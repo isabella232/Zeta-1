@@ -12,7 +12,6 @@ Detail: [README](zds-web/README.md)# open-zeta
 ## License
 
 Copyright 2021 eBay Inc.
-Developer: ChuanXiaoYang Tian, TianRui Sun, Zhou Huang, Tong Jin
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
