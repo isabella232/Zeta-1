@@ -1,0 +1,723 @@
+
+@import "@/styles/global.scss";
+$FAQColor: rgba(91,94,183,0.8);
+$TableColor: rgba(96,141,117,0.8);
+$UDFColor: rgba(154,97,151,0.8);
+$SparkSQLColor: rgba(160,111,67,0.8);
+$NotebookColor: rgba(64, 158, 255, 0.8);
+$SearchColor: rgba(67,117,160,0.8);
+$NewColor: rgba(160,67,67,0.8);
+$Height: 560px;
+$Width: 660px;
+$ContentHeight: calc(100% - 90px);
+.platform .el-radio-button {
+    box-shadow: none !important;
+    /deep/ .el-radio-button__inner {
+        background: inherit;
+        background-color: #fff;
+        border: 1px solid #569ce1 !important;
+        border-radius: 4px !important;
+        box-shadow: none !important;
+        color: #569ce1;
+        font-size: 11px;
+        height: 20px;
+        line-height: 18px;
+        padding: 0 5px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        min-width: auto;
+    }
+    /deep/ .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+      background-color:#569ce1;
+      border: 1px solid #569ce1 !important;
+      color: #fff;
+    }
+
+    /deep/ .el-radio-button__inner:hover {
+      border: 1px solid #569ce1 !important;
+      color: #569ce1;
+    }
+}
+.zeta-ace-wrapper{
+    position: fixed;
+    right: 43px;
+    bottom: 93px;
+    z-index: 2000;
+    width: 50px;
+    height: 50px;
+    .ace-button{
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        width: 51px;
+        height: 51px;
+        border-radius: 50%;
+        border-color: #fff;
+        box-shadow:  0 0 10px #cacbcf;
+        box-sizing: border-box;
+        background-color: #ffffff;
+        cursor: pointer;
+        // transition: .6s;
+        user-select:none;
+        .zeta-icon-help{
+          font-size: 25px;
+          color: $zeta-global-color;
+        }
+        .zeta-enotify{
+            position: absolute;
+            top: 0px;
+            left: 35px;
+        }
+    }
+    .zeta-ace-main{
+        position: absolute;
+        right: 55px;
+        bottom: 0px;
+        transition: .3s;
+        width: 0;
+        height: $Height;
+        border-radius: 4px;
+        background-color: $zeta-global-light-grey;
+        box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+        word-break: break-word;
+        font-size: 13px;
+        &.show{
+          width: $Width;
+        }
+        .ace-body{
+            width: 100%;
+            height: 100%;
+            transition: width 0.3s;
+            .header{
+                background-color: $zeta-global-color;
+                color: #ffffff;
+                text-align: center;
+                line-height: 40px;
+                height: 40px;
+                border-radius: 4px;
+                font-size: 16px;
+                box-sizing: border-box;
+                overflow: hidden;
+                // cursor: ns-resize;
+                .el-icon-minus{
+                    float: right;
+                    font-size: 20px;
+                    cursor: pointer;
+                    padding: 10px;
+                }
+                .layout-ctrl{
+                  float: left;
+                  padding-left:5px;
+                  cursor: pointer;
+                  .icon{
+                    color: #ffffff;
+                  }
+                }
+            }
+            .content{
+                width: 100%;
+                overflow: auto;
+                padding: 10px 10px 0;
+                box-sizing: border-box;
+                height: $ContentHeight;
+                line-height: 18px;
+                .defaultQA{
+                    li{
+                        list-style: none;
+                        color: $zeta-font-light-color;
+                        margin: 5px 0;
+                        cursor: pointer;
+                        &:hover{
+                            color: $zeta-global-color;
+                        }
+                    }
+                }
+                .message-list{
+                    margin-bottom: 10px;
+                    .message-box{
+                        .day{
+                            text-align: center;
+                            font-size: 12px;
+                            color: $zeta-font-light-color;
+                        }
+                        .time{
+                            font-size: 12px;
+                            color: $zeta-font-light-color;
+                            clear: both;
+                            padding-left: 45px;
+                            padding-top: 3px;
+                        }
+                        .message-content{
+                            // overflow: hidden;
+                            width: 100%;
+                            .header-img{
+                                width: 30px;
+                                height: 30px;
+                                border-radius: 50%;
+                                color: #ffffff;
+                                font-size: 18px;
+                                // font-weight: 700;
+                                line-height: 30px;
+                                text-align: center;
+                                margin-right: 5px;
+                                float: left;
+                                background-size: cover;
+                                background-color: $zeta-global-color;
+                                span{
+                                    display: inline-block;
+                                    width: 100%;
+                                    height: 100%;
+                                    border-radius: 50%;
+                                    background-size: cover;
+                                }
+                            }
+                            .message-data{
+                                display: inline-block;
+                                border-radius: 6px 6px 6px 0;
+                                padding: 10px;
+                                background-color: #ffffff;
+                                max-width: calc(100% - 70px);
+                                box-sizing: border-box;
+                                white-space: pre-line;
+                                overflow-x: auto;
+                                .title,.question{
+                                    color: #333;
+                                }
+                                .search{
+                                  width: 290px;
+                                  li{
+                                    list-style: none;
+                                    padding: 0 0 15px;
+                                    .title{
+                                      font-weight: bold;
+                                      cursor: pointer;
+                                      &:hover{
+                                        color: $zeta-global-color;
+                                      }
+                                    }
+                                  }
+                                }
+                                table{
+                                    border-spacing: 0;
+                                    font-size: 14px;
+                                    th,td{
+                                      color: $zeta-font-light-color;
+                                      padding-bottom: 2px;
+                                    }
+                                    th{
+                                      vertical-align: top;
+                                      white-space: nowrap;
+                                      text-align: left;
+                                      padding-right: 5px;
+                                    }
+                                }
+                                .table{
+                                    width: 400px;
+                                    // min-width: 400px;
+                                    position: relative;
+                                    .table-title{
+                                      display: flex;
+                                      justify-content: space-between;
+                                      line-height: 26px;
+                                      .name{
+                                        margin-bottom: 0;
+                                        i{
+                                          color: $zeta-font-light-color;
+                                          margin-left: 6px;
+                                          font-weight: normal;
+                                          cursor: pointer;
+                                          &:hover{
+                                            color: #569ce1;
+                                          }
+                                        }
+                                      }
+                                      .el-radio-group{
+                                        white-space: nowrap;
+                                      }
+                                      .el-radio-button__inner{
+                                        padding: 6px;
+                                      }
+                                    }
+                                    .platform{
+                                        margin: 10px 0 5px;
+                                        color: $zeta-font-light-color;
+                                        em{
+                                          margin-right: 5px;
+                                        }
+                                    }
+                                    a{
+                                        margin-top: 5px;
+                                        display: inline-block;
+                                    }
+                                    li{
+                                      list-style: none;
+                                    }
+                                }
+                                .udf{
+                                    position: relative;
+                                    i{
+                                        position: absolute;
+                                        background-color: #9a6197;
+                                        border-radius: 2px;
+                                        color: #fff;
+                                        top: -20px;
+                                        z-index: 9999;
+                                        left: -10px;
+                                        font-size: 12px;
+                                        padding: 0 8px;
+                                        font-style: normal;
+                                    }
+                                }
+                                .spark{
+                                  li{
+                                    a{
+                                      font-size: 14px;
+                                      font-weight: bold;
+                                    }
+                                  }
+                                }
+                                .faq{
+                                    .faq-question,.faq-answer{
+                                        display: grid;
+                                        grid-template-columns: 70px auto;
+                                        >p{
+                                          vertical-align: text-top;
+                                          /deep/ img{
+                                             max-width: 100%;
+                                          }
+                                        }
+                                    }
+                                    .faq-question{
+                                        margin-bottom: 5px;
+                                    }
+                                    .action{
+                                        text-align: left;
+                                        color: $zeta-font-light-color;
+                                        >span{
+                                            padding-right: 10px;
+                                            &:first-child{
+                                                margin-right: 10px;
+                                            }
+                                            &.like-on{
+                                                i{
+                                                    color: $zeta-global-color;
+                                                    animation: myfirst 0.3s;
+                                                }
+                                                @keyframes myfirst
+                                                {
+                                                    0% {font-size: 18px;}
+                                                    100% {font-size: 20px;}
+                                                }
+                                            }
+                                            i{
+                                                cursor: pointer;
+                                                font-size: 18px;
+                                                color: $zeta-font-light-color;
+                                            }
+                                        }
+                                    }
+                                }
+                                .action{
+                                    border-top: 1px solid #ebebeb;
+                                    padding-top: 10px;
+                                    margin-top: 10px;
+                                    text-align: right;
+                                    .el-button{
+                                        padding: 6px; 
+                                        min-width: auto;
+                                        &:hover{
+                                            color: $zeta-global-color-heighlight;
+                                        }
+                                    }
+                                    &.resolve{
+                                        .el-button{
+                                            color: $zeta-global-color-disable;
+                                        }
+                                    }
+                                }
+                              .new-question-box{
+                                width: 100%;
+                              }
+                            }
+                            em{
+                                font-style: normal;
+                                font-weight: 700;
+                            }
+                            .name{
+                                margin-bottom: 10px;
+                                font-weight: bold;
+                            }
+                            .router{
+                                color: $zeta-global-color;
+                                cursor: pointer;
+                                margin-top: 5px;
+                                font-size: 13px;
+                                &:hover{
+                                    color: $zeta-global-color-heighlight
+                                }
+                            }
+                            .space{
+                                height: 5px;
+                                line-height: 5px;
+                            }
+                            .link{
+                              span{
+                                display: block;
+                              }
+                            }
+                        }
+                    }
+                    &.customer{
+                        .message-content{
+                            float: right;
+                            .header-img{
+                                float: right;
+                                margin-left: 5px;
+                                margin-right: 0;
+                            }
+                            .message-data{
+                                float: right;
+                                background-color: #ebf0f7;
+                                border-radius: 6px 6px 0 6px;
+                            }
+                        }
+                        .time{
+                            text-align: right;
+                            clear: both;
+                            padding-right: 45px;
+                        }
+                    }
+                }
+            }
+            .footer{
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                left: 0;
+                margin: 0 10px;
+                height: 45px;
+                box-sizing: border-box;
+                overflow: hidden;
+                // background-color: rgba(249, 249, 250, 1);
+                .input-box{
+                    user-select: none;
+                    padding: 5px 0 10px;
+                    background-color: $zeta-global-light-grey; 
+                    width: 100%;
+                    position: absolute;
+                    left: 10px;
+                    display: flex;
+                    justify-content: space-between;
+                    i{
+                      flex-basis: 30px;
+                      margin-left: 5px;
+                    }
+                }
+                .message{
+                    width: 100%;
+                    height: 30px;
+                    background-color: #ffffff;
+                    font-size: 13px;
+                    padding: 0 15px;
+                    border-radius: 30px;
+                    box-sizing: border-box;
+                    outline: none;
+                    border: 1px solid #DCDFE6;
+                    &::placeholder{
+                        color: $zeta-global-color-disable;
+                    }
+                    &:focus{
+                      border: 1px solid $zeta-global-color;
+                    }
+                }
+                .send{
+                    font-size: 30px;
+                    line-height: 30px;
+                    cursor: pointer;
+                    color:$zeta-global-color-disable;
+                    &.active{
+                        color: $zeta-global-color;
+                    }
+                    &:hover{
+                        color: $zeta-global-color;
+                    }
+                }
+                .search-result{
+                    position: absolute;
+                    bottom: -160px;
+                    left: -10px;
+                    right: -10px;
+                    z-index: 2;
+                    padding: 5px 10px 5px;
+                    box-sizing: border-box;
+                    background-color: #ffffff;
+                    box-shadow: 0 -2px 2px 0px rgba(0, 0, 0, 0.08);
+                    transition: .1s;
+                    overflow: hidden;
+                    clear: both;
+                }
+                .show-more{
+                  position: absolute;
+                  bottom: 5px;
+                  width: calc(100% - 10px);
+                  background-color: #ffffff;
+                  color: $zeta-font-light-color;
+                  text-align: center;
+                  // padding-top: 5px;
+                  cursor: pointer;
+                  &:hover{
+                    color: $zeta-global-color;
+                  }
+                }
+                &.show{
+                  overflow: inherit;
+                  .input-box{
+                    position: relative;
+                    left: 0;
+                  }
+                  .search-result{
+                    bottom: 45px;
+                  }
+              }
+            }
+            .result-list{
+                max-height: 125px;
+                overflow: auto;
+                border-radius: 4px;
+                background-color: #ffffff;
+                li{
+                    list-style: none;
+                    line-height: 16px;
+                    padding: 2px 0;
+                    &.table{
+                      align-items: center;
+                      display: -webkit-box;
+                      .platform{
+                        display: flex;
+                        line-height: 1;
+                        margin-left: 10px;
+                      }
+                    }
+                    &.query{
+                      .platform{
+                        margin-left: 10px;
+                      }
+                    }
+                    >span{
+                      cursor: pointer;
+                      &:hover{
+                        color: $zeta-global-color;
+                      }
+                    }
+                    .type{
+                        display: inline-block;
+                        font-style:normal;
+                        margin-right: 8px;
+                        color: #ffffff;
+                        border-radius: 3px;
+                        padding: 0 5px;
+                        font-size: 11px;
+                        &.FAQ{
+                            background-color: $FAQColor;
+                        }
+                        &.Table{
+                            background-color: $TableColor;
+                        }
+                        &.UDF{
+                            background-color: $UDFColor;
+                        }
+                        &.SparkSQL{
+                            background-color: $SparkSQLColor;
+                        }
+                        &.Notebook{
+                          background-color: $NotebookColor;
+                      }
+                        &.Search{
+                            background-color: $SearchColor;
+                        }
+                        &.New{
+                            background-color: $NewColor;
+                        }
+                    }
+                    .platform-icon{
+                      font-style: normal;
+                      margin-left: 2px;
+                      padding: 1px 2px;
+                      opacity: 1;
+                    }
+                }
+                &.showMore{
+                  margin-bottom: 20px;
+                }
+            }
+            .search{
+                .result-list{
+                    max-height: inherit;
+                }
+            }
+            .message-content {
+                .result-list{
+                    padding: 0;
+                }
+            }
+        }
+        .message-loading{
+            background-color: #ffffff;
+            display: inline-block;
+            border-radius: 5px;
+            padding: 12px 6px;
+            .loading-box{
+                width: 60px;
+                height: 12px;
+                line-height: 12px;
+            }
+            .loading-box span{
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                margin-right: 5px;
+                border-radius: 50%;
+                background: $zeta-font-light-color;
+                animation: load 0.92s ease infinite;
+            }
+            .loading-box span:last-child{
+                margin-right: 0px; 
+            }
+            @keyframes load{
+                0%{
+                    opacity: 1;
+                    transform: scale(1.1);
+                }
+                100%{
+                    opacity: 0.3;
+                    transform: scale(.4);
+                }
+            }
+            .loading-box span:nth-child(1){
+                animation-delay:0.23s;
+            }
+            .loading-box span:nth-child(2){
+                animation-delay:0.46s;
+            }
+            .loading-box span:nth-child(3){
+                animation-delay:0.69s;
+            }
+        }
+        &.full-screen {
+          font-size: 14px;
+          .search,
+          .table,
+          .new-question-box {
+            width: 600px !important;
+          }
+          
+          // .footer .search-result{
+          //   bottom: -220px;
+          // }
+          // .result-list{
+          //   max-height: 188px;
+          // }
+          .suggested-tab-wrapper{
+            .tab-nav{
+              li{
+                padding: 0 15px !important;
+                font-size: 14px;
+                &:first-child{
+                  padding-left: 0 !important;
+                }
+              }
+            }
+            .tab-content{
+              height: 280px;
+            }
+          }
+        }
+    }
+    /deep/ .highlight{
+        font-weight: bold;
+        background-color: #fffc55;
+    }
+    .submit-question-wrap{
+      margin:0 -10px;
+      .submit-space{
+        background-color: $zeta-global-light-grey;
+        height: 10px;
+      }
+      >span{
+        color: $zeta-global-color;
+        opacity: 0.8;
+        padding: 10px 10px 0;
+        display: block;
+        cursor: pointer;
+        &:hover{
+          opacity: 1;
+        }
+      }
+    }
+
+    .message-data{
+      overflow: hidden;
+      /deep/ .image{
+        position: relative;
+        display: block;
+        max-width: 100%;
+        min-width: 50px;
+        clear: both;
+        text-align: center;
+        margin: 1em auto;
+        &.image_resized{
+          max-width: 100%;
+          display: block;
+          box-sizing: border-box;
+        }
+        &.image-style-side{
+          float: right;
+          margin-left: var(--ck-image-style-spacing);
+          max-width: 50%;
+        }
+        &.image-style-align-left{
+          float: left;
+          margin-right: var(--ck-image-style-spacing);
+          max-width: 50%;
+        }
+        img{
+          display: block;
+          margin: 0 auto;
+          max-width: 100%;
+          min-width: 50px;
+        }
+        figcaption{
+          // display: table-caption;
+          caption-side: bottom;
+          word-break: break-word;
+          color: #333;
+          background-color: #f7f7f7;
+          padding: .6em;
+          font-size: .75em;
+          outline-offset: -1px;
+          text-align: center;
+        }
+      }
+      /deep/ pre{
+          padding: 1em;
+          color: #353535;
+          background: hsla(0,0%,78%,.3);
+          border: 1px solid #c4c4c4;
+          border-radius: 2px;
+          text-align: left;
+          direction: ltr;
+          tab-size: 4;
+          white-space: pre-wrap;
+          font-style: normal;
+          min-width: 200px;
+          code{
+            background: unset;
+            padding: 0;
+            border-radius: 0;
+          }
+        }
+    }
+}

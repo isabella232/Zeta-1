@@ -1,0 +1,17 @@
+import 'reflect-metadata';
+import { WSClient } from '@/net/notebook/WSClient';
+export const WSMessageMetadataKey = 'wsmessage:options'
+export interface WSMessageOptions {
+    isError?: boolean
+    op?: string
+    /** async response required */
+    alias?: WSClient.OPAlias
+    mappingPath?: Dict<string>
+    ignoreTracking?: boolean
+}
+export function WSMessage(option: WSMessageOptions = { isError: false }) {
+    return function(target: WSClient.WSControllerBase, propertyKey: string, descriptor: PropertyDescriptor) {
+        const $op = option.op || propertyKey;
+        Reflect.defineMetadata(WSMessageMetadataKey, option, target, $op)
+    }
+}

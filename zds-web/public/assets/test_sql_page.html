@@ -1,0 +1,165 @@
+<html>
+
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+  <link rel="stylesheet" href="./bootstrap.min.css" type="text/css" />
+  <script src="./jquery-1.11.1.min.js"></script>
+  <script src="./bootstrap-tooltip.js"></script>
+  <script src="./initialize-tooltips.js"></script>
+
+  <title>test - Details for Query 0</title>
+</head>
+
+<body>
+
+  <div class="container-fluid">
+ 
+    <div>
+      <div id="plan-viz-graph"></div>
+      <!-- <div id="plan-viz-metadata" style="display:none">
+        <div class="dot-file">
+          digraph G {
+          0 [label=&quot;CollectLimit&quot;];
+
+          subgraph cluster1 {
+          label=&quot;WholeStageCodegen&quot;;
+          2 [label=&quot;HashAggregate&quot;];
+          }
+
+          3 [label=&quot;Exchange&quot;];
+
+          subgraph cluster4 {
+          label=&quot;WholeStageCodegen&quot;;
+          5 [label=&quot;HashAggregate&quot;];
+          6 [label=&quot;HashAggregate&quot;];
+          7 [label=&quot;HashAggregate&quot;];
+          8 [label=&quot;Project&quot;];
+          9 [label=&quot;SortMergeJoin&quot;];
+          }
+
+
+          subgraph cluster10 {
+          label=&quot;WholeStageCodegen&quot;;
+          11 [label=&quot;Sort&quot;];
+          }
+
+          12 [label=&quot;Exchange&quot;];
+
+          subgraph cluster13 {
+          label=&quot;WholeStageCodegen&quot;;
+          14 [label=&quot;Project&quot;];
+          15 [label=&quot;Filter&quot;];
+          16 [label=&quot;SerializeFromObject&quot;];
+          }
+
+          17 [label=&quot;ExternalRDDScan&quot;];
+
+          subgraph cluster18 {
+          label=&quot;WholeStageCodegen&quot;;
+          19 [label=&quot;Sort&quot;];
+          }
+
+          20 [label=&quot;Exchange\n \ndata size total (min, med, max): \n62.0 B (31.0 B, 31.0 B, 31.0 B)&quot;];
+
+          subgraph cluster21 {
+          label=&quot;WholeStageCodegen\n\n\n93 ms (46 ms, 47 ms, 47 ms)&quot;;
+          22 [label=&quot;Project&quot;];
+          23 [label=&quot;Filter\n \nnumber of output rows: 4&quot;];
+          24 [label=&quot;SerializeFromObject&quot;];
+          }
+
+          25 [label=&quot;ExternalRDDScan\n \nnumber of output rows: 4&quot;];
+          2-&gt;0;
+
+          3-&gt;2;
+
+          5-&gt;3;
+
+          6-&gt;5;
+
+          7-&gt;6;
+
+          8-&gt;7;
+
+          9-&gt;8;
+
+          11-&gt;9;
+
+          12-&gt;11;
+
+          14-&gt;12;
+
+          15-&gt;14;
+
+          16-&gt;15;
+
+          17-&gt;16;
+
+          19-&gt;9;
+
+          20-&gt;19;
+
+          22-&gt;20;
+
+          23-&gt;22;
+
+          24-&gt;23;
+
+          25-&gt;24;
+
+          }
+        </div>
+        <div id="plan-viz-metadata-size">26</div>
+        <div id="plan-meta-data-0">CollectLimit 21</div>
+        <div id="plan-meta-data-2">HashAggregate(keys=[], functions=[count(1)])</div>
+        <div id="plan-meta-data-1">WholeStageCodegen</div>
+        <div id="plan-meta-data-3">Exchange SinglePartition</div>
+        <div id="plan-meta-data-5">HashAggregate(keys=[], functions=[partial_count(1)])</div>
+        <div id="plan-meta-data-6">HashAggregate(keys=[key#6], functions=[])</div>
+        <div id="plan-meta-data-7">HashAggregate(keys=[key#6], functions=[])</div>
+        <div id="plan-meta-data-8">Project [key#6]</div>
+        <div id="plan-meta-data-9">SortMergeJoin [key#6], [key#18], Inner</div>
+        <div id="plan-meta-data-4">WholeStageCodegen</div>
+        <div id="plan-meta-data-11">Sort [key#6 ASC NULLS FIRST], false, 0</div>
+        <div id="plan-meta-data-10">WholeStageCodegen</div>
+        <div id="plan-meta-data-12">Exchange hashpartitioning(key#6, 5)</div>
+        <div id="plan-meta-data-14">Project [_1#3 AS key#6]</div>
+        <div id="plan-meta-data-15">Filter isnotnull(_1#3)</div>
+        <div id="plan-meta-data-16">SerializeFromObject [assertnotnull(input[0, scala.Tuple2, true])._1 AS _1#3,
+          assertnotnull(input[0, scala.Tuple2, true])._2 AS _2#4]</div>
+        <div id="plan-meta-data-13">WholeStageCodegen</div>
+        <div id="plan-meta-data-17">Scan ExternalRDDScan[obj#2]</div>
+        <div id="plan-meta-data-19">Sort [key#18 ASC NULLS FIRST], false, 0</div>
+        <div id="plan-meta-data-18">WholeStageCodegen</div>
+        <div id="plan-meta-data-20">Exchange hashpartitioning(key#18, 5)</div>
+        <div id="plan-meta-data-22">Project [_1#15 AS key#18]</div>
+        <div id="plan-meta-data-23">Filter (isnotnull(_2#16) &amp;&amp; isnotnull(_1#15))</div>
+        <div id="plan-meta-data-24">SerializeFromObject [assertnotnull(input[0, scala.Tuple2, true])._1 AS _1#15,
+          assertnotnull(input[0, scala.Tuple2, true])._2 AS _2#16]</div>
+        <div id="plan-meta-data-21">WholeStageCodegen</div>
+        <div id="plan-meta-data-25">Scan ExternalRDDScan[obj#14]</div>
+      </div> -->
+      <div id="plan-viz-metadata" style="display:none">
+        <div class="dot-file">
+                  digraph G {
+        0 [label=&quot;CollectLimit&quot;];
+        1 [label=&quot;ExistingRDD\n \nnumber of output rows: 0&quot;];
+        1-&gt;0;
+
+        }
+                </div>
+                <div id="plan-viz-metadata-size">2</div>
+                <div id="plan-meta-data-0">CollectLimit 1001</div><div id="plan-meta-data-1">Scan ExistingRDD[]</div>
+      </div>
+      <link rel="stylesheet" href="./spark-sql-viz.css" type="text/css" />
+      <script src="./d3.min.js"></script>
+      <script src="./dagre-d3.min.js"></script>
+      <script src="./graphlib-dot.min.js"></script>
+      <script src="./spark-sql-viz.js"></script>
+      <script>$(function () { renderPlanViz(); })</script>
+    </div>
+
+  </div>
+</body>
+
+</html>

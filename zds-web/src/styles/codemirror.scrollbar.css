@@ -1,0 +1,11 @@
+.CodeMirror-simplescroll-horizontal {
+  bottom: 0; left: 0;
+  height: 10px;
+}
+
+.CodeMirror-simplescroll-vertical {
+  right: 0; top: 0;
+  width: 16px;
+}
+
+@import "../../node_modules/codemirror/addon/scroll/simplescrollbars.css"

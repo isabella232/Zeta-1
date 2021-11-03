@@ -1,0 +1,89 @@
+---
+# Source: zds-web/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    application.tess.io/name: zetadev
+    applicationinstance.tess.io/name: zeta-prod-appinstance
+    zds.dev: "true"
+  annotations:
+    zds.dev.envoy.route/nginx: "pathPrefix=/TMP_NAME,prefixRewrite=/,cluster=nginx"
+    zds.dev.envoy.cluster/nginx: "port=80"
+  name: zds-web-dev-TMP_NAME
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app: zds-web-dev-TMP_NAME
+---
+# Source: zds-web/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zds-web-dev-TMP_NAME
+  labels:
+    application.tess.io/name: zetadev
+    applicationinstance.tess.io/name: zeta-prod-appinstance
+  annotations:
+
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: zds-web-dev-TMP_NAME
+  template:
+    metadata:
+      annotations:
+        io.sherlock.metrics/hosts: ${data.host}:8090/notebook/actuator/prometheus
+        io.sherlock.metrics/module: prometheus
+        io.sherlock.metrics/namespace: zeta-prod-ns
+        io.sherlock.metrics/period: 1m
+        io.sherlock.metrics/timeout: 1m
+
+        models.tess.io/cms-requested: "true"
+      labels:
+        app: zds-web-dev-TMP_NAME
+        application.tess.io/name: zetadev
+        applicationinstance.tess.io/name: zeta-prod-appinstance
+    spec:
+      tolerations:
+      - effect: NoSchedule
+        key: dedicated
+        operator: Equal
+        value: adi-generic-native
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: application.tess.io/name
+                  operator: In
+                  values:
+                  - zetadev
+              topologyKey: failure-domain.tess.io/faultDomain
+            weight: 100
+      containers:
+        - image: TMP_IMG
+          imagePullPolicy: Always
+          name: web
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            limits:
+              cpu: "1"
+              memory: 500Mi
+            requests:
+              cpu: "1"
+              memory: 500Mi
+          livenessProbe:
+            httpGet:
+              port: 80
+              path: /

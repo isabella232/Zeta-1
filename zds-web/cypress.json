@@ -1,0 +1,10 @@
+{
+  "pluginsFile": "tests/e2e/plugins/index.js",  
+  "baseUrl": "https://localhost.corp.ebay.com:8888/",
+  "isMockData": true,
+  "video": false,
+  "baseUrl_bak": "https://zeta-tools.staging.corp.ebay.com/tianrsun_zeta/", 
+  "NT_LOGIN":"zeta_tester",
+  "TOKEN": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJ6ZXRhX3Rlc3RlclR1ZSBNYXIgMDUgMTQ6NTQ6MTQgQ1NUIDIwMTkiLCJzdWIiOiJ6ZXRhX3Rlc3RlciIsImlzcyI6InpldGEuY29ycC5lYmF5LmNvbSIsImlhdCI6MTU1MTc2ODg1NH0.58Et-XuOa4sn90ChTJu15DHKiqxJh-iWTnDDF5nMEMNtw8bpBdSQUijX26zdITUELv7-ak2gkXEEotzpivSnRw"
+}
+

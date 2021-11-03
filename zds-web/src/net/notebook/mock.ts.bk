@@ -1,0 +1,26 @@
+/* TS 2.8.1 bug: @/types/workspace fails to resolve here. */
+import { INotebook, IJob } from "@/types/workspace"
+import { WSClient } from "./WSClient"
+let sample_notebooks = require("@/assets/notebooks-sample.json")
+
+export default {
+    getInitJobs(): Dict<IJob>  { 
+        let jobArr = sample_notebooks.jobs
+        let jobObj: Dict<IJob> = {};
+
+        jobArr.forEach((e: any) => jobObj[e.jobId] = Object.assign({}, e));
+
+        return jobObj;
+    },
+
+    getInitNotebooks(): Dict<INotebook> {
+        let nbArr = sample_notebooks.notebooks;
+        let nbObj: Dict<INotebook> = {};
+
+        nbArr.forEach((e: any) => {
+            nbObj[e.notebookId] = Object.assign({}, e);
+        });
+
+        return nbObj;
+    }
+}

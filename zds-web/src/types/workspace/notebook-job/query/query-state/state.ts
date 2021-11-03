@@ -1,0 +1,9 @@
+export enum State {
+  SUBMITTED = 'SUBMITTED',
+  RUNNING = 'RUNNING',
+  SUCCESS = 'SUCCESS',
+  CANCELED = 'CANCELED',
+  // UNKONOWN = 'UNKNOWN',
+  ERROR = 'ERROR',
+  WAITING = 'WAITING'
+}

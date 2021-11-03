@@ -1,0 +1,974 @@
+import SockJS from 'sockjs-client'
+import Stomp, { Frame } from 'stompjs'
+import { WSPacket } from '@/types/WSPackets'
+import { Store } from 'vuex'
+import { NotebookStatus, JobStatus, CodeTypes, IQuery, IPreference, CodeType, INotebook, MultiNotebook, IQueryContent } from '@/types/workspace'
+import uuid from "uuid/v4"
+import EnvConfig from "@/config/config"
+import Util from "@/services/Util.service"
+import { WorkspaceSrv } from '@/services/Workspace.service';
+import _ from 'lodash';
+import { WSMessage, WSMessageOptions, WSMessageMetadataKey } from '@/decorator'
+import { ZetaException, ExceptionPacket, ZetaExceptionProps, StackTrace, WSExceptionPacket } from '@/types/exception';
+import * as Logger from '@/plugins/logs/zds-logger';
+let pretty = require('js-object-pretty-print').pretty;
+function ZetaExceptionFacotry(m: any) {
+    const notebookId = m.data && m.data ? m.data.notebookId || m.data.noteId || '' : '';
+    const e = new ZetaException(<WSExceptionPacket>{
+        code: 'WS_EXCEPTION',
+        errorDetail: {
+            message: m.op,
+            context: {
+                message: '',
+                stackTrace: [] as StackTrace[],
+                context: ''
+            },
+        },
+        responseHeaders: {},
+    }, <ZetaExceptionProps>{ path: 'notebook', workspaceId: notebookId })
+    return e
+}
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace WSClient {
+
+    export interface Config {
+        endpoints: {
+            connect: string,
+            response: string,
+            execute: string,
+            reqId: string
+        },
+        auth_header: Object,
+        retry_times: number
+    }
+
+    export enum Status {
+        NOT_INITILIZED = "NOT_INITILIZED",
+        INITILIZED = "INITIALIZED",
+        CONNECTING = "CONNECTING",
+        RECONNECTING = "RECONNECTING",
+        WAITING_RECONNECT = "WAITING_RECONNECT",
+        LOGGED_IN = "LOGGED_IN",
+        LOG_UNKNOWN_FAIL = "LOG_UNKNOWN_FAIL",
+        AUTH_FAILED = "AUTH_FAILED",
+        OFFLINE = "OFFLINE",
+    }
+
+
+    export const OPEndpoints: { [K: string]: string } = {
+        [WSPacket.OP.NB_CONNECT]: 'nbConnect',
+        [WSPacket.OP.NB_DISCONNECT]: 'nbDisconnect',
+        [WSPacket.OP.NB_CODE_JOB_SUBMIT]: "execute",
+        [WSPacket.OP.NB_CODE_JOB_DUMP]: "dump",
+        [WSPacket.OP.NB_CODE_JOB_CANCEL]: "cancel",
+        [WSPacket.OP.ZETA_SERVER_REQ_ID]: "reqId",
+        [WSPacket.OP.NB_RECOVER]: "recover",
+    }
+
+    export type OPAlias = 'CONNECTION_RESP' | 'DISCONNECTION_RESP' | 'JOB_CANCEL_RESP'
+    export interface AsyncWSRequest {
+        id: string
+        opAlias: OPAlias
+        resolver: Function
+        rejecter: Function
+        mapping: Dict<string>
+    }
+    export interface AsyncWSMessageOption {
+        opAlias: OPAlias
+        mapping: Dict<string>
+        timeout?: number
+    }
+    export const RETRY_TIMES = 1;
+    export const RETRY_WAITING = 60 * 1000;
+    export class WSControllerBase {
+        protected config: Config;
+        public status: Status;
+        protected socket: WebSocket;
+        protected client: Stomp.Client;
+        protected store: Store<any>;
+        protected asyncRequestList: AsyncWSRequest[];
+        public sessionId: string = 'INITIAL_SESSION_ID'
+        private cnn_start_time: number = -1;
+        private cnn_end_time: number = -1;
+        public responseHeaders: any = {};
+        constructor(store?: Store<any>, config?: Config) {
+            if (store) this.store = store;
+            if (config) this.config = config;
+            if (store && config) this.status = Status.NOT_INITILIZED;
+            else this.status = Status.INITILIZED;
+            this.asyncRequestList = [];
+        }
+
+        public configure(store?: Store<any>, config?: Config) {
+            if (store) this.store = store;
+            if (config) this.config = config;
+            this.status = Status.INITILIZED;
+        }
+
+        public uninstall() {
+            this.socket.close();
+            this.status = Status.NOT_INITILIZED;
+        }
+
+        public connect(retry: boolean = false) {
+            if (!this.config) {
+                this.config = {
+                    endpoints: EnvConfig.zeta.notebook.endpoints,
+                    auth_header: {
+                        Authorization: 'Bearer ' + Util.getZetaToken()
+                    },
+                    retry_times: RETRY_TIMES
+                } as Config;
+            }
+            if (this.socket) this.socket.close();
+            this.sessionId = Util.generateSessionId()
+            this.socket = new SockJS(this.config.endpoints.connect, [], { sessionId: () => { return this.sessionId } });
+            this.client = Stomp.over(this.socket);
+            /* BUG: Stomp sends more bytes than is claimed by maxWebSocketFrameSize
+             * This caused server to reject a multi-frame packet.
+             * WORKAROUND: Lower maxWebSocketFrameSize to 8192.
+             */
+            this.client.maxWebSocketFrameSize = 8 * 1024;
+            this.client.debug = (str: string) => { console.debug("WS SOURCE: ", str) }
+
+            this.client.heartbeat.outgoing = 30000;
+            // client will send heartbeats every 20000ms
+            this.client.heartbeat.incoming = 10000;
+            Logger.counter('WS_CONNECT');
+            this.cnn_start_time = -1;
+            // @ts-ignore
+            this.client.connect(this.config.auth_header, this.connectOKHandler.bind(this), this.connectFailHandler.bind(this));
+            this.status = retry ? Status.RECONNECTING : Status.CONNECTING;
+            if (retry) console.info('WS RECONNECT', 'RECONNECT SUCCESS');
+        }
+        private verifyUsername(frame?: Stomp.Frame): boolean {
+            if (!frame || !frame.headers) return false
+            const username = (frame.headers as any)['user-name']
+            return !_.isEmpty(username)
+        }
+        private connectOKHandler(frame?: Stomp.Frame) {
+            const valid = this.verifyUsername(frame)
+            if (!valid) {
+                // TODO timer metric
+                // $logger.trace('INTERNAL_ACTION', 'WS_CONNECT_INVALIED', {sessionId: this.sessionId});
+                this.status = Status.LOG_UNKNOWN_FAIL;
+                this.reconnect();
+                return
+            }
+            this.status = Status.LOGGED_IN;
+            this.client.subscribe(this.config.endpoints.response, (_m: Stomp.Message) => {
+                /** ws tracking */
+
+                try {
+                    let m: WSPacket.Message = JSON.parse(_m.body);
+                    const opOption: WSMessageOptions = Reflect.getMetadata(WSMessageMetadataKey, this, m.op);
+                    if (!opOption.ignoreTracking) {
+                        // TODO tracking
+                        // window.$logger.wsMsg(this.sessionId, _m)
+                    }
+                    this.onMessage(m);
+                } catch (e) {
+                    console.error(e)
+                }
+            })
+            this.send(WSPacket.OP.ZETA_SERVER_REQ_ID, {});
+            this.cnn_start_time = new Date().getTime();
+            Logger.counter('WS_CONNECT_CONNECTED');
+        }
+        /**
+         * @AsyncMessage
+         *
+         * !Step1: Send message
+         *      |----------|    |-----------------------------|
+         *      |          |    |   register async request    |
+         *      |   send   | => |  ( create a promise object. |
+         *      |          |    |   hack its resolve/reject)  |
+         *      |----------|    |-----------------------------|
+         *
+         * !Step2: dispatch message
+         *
+         *     |-----------|    |---------------------------------|    |---------------------|
+         *     | onMessage | => | @invoke_default_message_hanlder | => | @dispatch_exception |
+         *     |-----------|    |---------------------------------|    |---------------------|
+         *
+         *     |-------------------|    |------------------------------------|    |---------------------------|
+         *  => | @is_async_request | => | find the resolver/reject function. | => | @unregister_async_request |
+         *     |-------------------|    | return result form default handler |    |---------------------------|
+         *                              |------------------------------------|
+         */
+        protected onMessage(m: any) {
+            const findAsyncRequest = (opOption: WSMessageOptions): AsyncWSRequest | undefined => {
+                if (!opOption.alias || !opOption.mappingPath) return undefined
+
+                return _.chain(this.asyncRequestList)
+                    .filter((req: AsyncWSRequest) => req.opAlias === opOption.alias)
+                    .find((req: AsyncWSRequest) => {
+                        const op = m.op;
+                        const message = m.data;
+                        let isReq = _.find(req.mapping, (sendVal, key) => {
+                            if (opOption.mappingPath && opOption.mappingPath[key] != undefined) {
+                                const path = opOption.mappingPath[key]
+                                let reqVal = _.get(message, path) // message[path];
+                                return Boolean(reqVal == sendVal)
+                            }
+                            return false;
+                        })
+                        return Boolean(isReq);
+                    }).value()
+            }
+            if (m.op in WSPacket.OP) {
+                /** @invoke_default_message_hanlder */
+                const defaultMsgHandler: (arg: any) => undefined | ZetaException = (this as any)[m.op];
+                let result: undefined | ZetaException = defaultMsgHandler.call(this, m.data)
+
+                const opOption: WSMessageOptions = Reflect.getMetadata(WSMessageMetadataKey, this, m.op);
+
+                /**
+                 * @dispatch_exception
+                 * generate exception for error op
+                 */
+                const exception = result;
+                if (opOption.isError) {
+                    // TODO Tracking
+                    // window.$logger.error([`WS -> OP:${m.op}`],JSON.stringify(m))
+                    if (exception) {
+                        this.store.dispatch('addException', { exception })
+                    }
+                }
+
+                /** @is_async_request */
+                if (opOption.alias && opOption.mappingPath) {
+                    const asyncRequest = findAsyncRequest(opOption);
+                    if (asyncRequest) {
+                        if (opOption.isError) {
+                            asyncRequest.rejecter(exception)
+                        } else {
+                            asyncRequest.resolver(result || m.data)
+                        }
+                        /** @unregister_async_request */
+                        _.remove(this.asyncRequestList, req => req.id === asyncRequest.id)
+                    }
+                }
+
+            }
+            else {
+                /* No OP handler found */
+                console.warn("WS: ", "Received unknown packet." + m.op);
+                // TODO Tracking
+                // window.$logger.error([`WS ERROR -> WS CANNOT FIND OP:${m.op}`,m.data])
+            }
+        }
+        public send(op: string, data: any) {
+            if (this.status !== Status.LOGGED_IN) {
+                console.warn("WS: ", "Fail to send because not logged in");
+                return;
+            }
+
+            if (!(op in OPEndpoints) || !OPEndpoints[op] || OPEndpoints[op] === "") {
+                console.warn("WS: ", `Endpoint for OP ${op} is not properly configured`)
+                return;
+            }
+
+            console.info('WS: SEND', op, pretty(data));
+            this.client.send((this.config.endpoints as any)[OPEndpoints[op]], {}, JSON.stringify(data));
+        }
+
+        public sendAsync(op: string, data: any, options: AsyncWSMessageOption) {
+            this.send(op, data)
+
+            const timeout = options.timeout;
+            const requestKey = uuid()
+            const promise = new Promise((resolve, reject) => {
+                let resolver = resolve;
+                if (timeout) {
+                    let to = setTimeout(() => {
+                        reject('timeout')
+                    }, timeout)
+                    resolver = (m: any) => {
+                        clearTimeout(to)
+                        resolve(m)
+                    }
+                }
+
+                let opts: AsyncWSRequest = {
+                    id: requestKey,
+                    rejecter: reject,
+                    resolver,
+                    opAlias: options.opAlias,
+                    mapping: options.mapping
+                }
+                this.asyncRequestList.push(opts)
+            })
+
+            return promise
+
+        }
+
+        private connectFailHandler(error: CloseEvent) {
+            console.warn(`WS Connect to ${this.config.endpoints.connect} failed.`, pretty(this.config.auth_header));
+            try {
+              this.cnn_end_time = new Date().getTime();
+              const durition = this.cnn_start_time == -1 ?  -1 : this.cnn_end_time - this.cnn_start_time;
+              console.warn(`WS CONNECT FAILED, code: ${error.code}, reason:${error.reason}`, error);
+              Logger.counter('WS_CONNECT_FAILED', 1, { code: error.code, reason: error.reason, wasClean: error.wasClean });
+              Logger.timer('WS_CONNECT_FAILED_TIMER', durition);
+            } catch(e) {
+
+            }
+            this.cnn_start_time = -1;
+            this.status = Status.LOG_UNKNOWN_FAIL;
+            this.store.dispatch("haltAll");
+            if (this.config.retry_times >= 0) {
+                // setTimeout(() => this.connect(), this.config.retry_timeout);
+                this.reconnect()
+            }
+            else {
+                Util.refreshPopup("Session expired",
+                    "please refresh this page to restart websocket");
+            }
+            this.responseHeaders = undefined;
+        }
+        private disconnect() {
+            return new Promise((resolve) => {
+                if (this.status !== Status.OFFLINE && this.status !== Status.LOG_UNKNOWN_FAIL) {
+                    this.client.disconnect(resolve)
+                } else {
+                    resolve();
+                }
+
+            })
+        }
+        /**
+         *
+         */
+        public reconnect(immediate: boolean = false) {
+            // ! will do nothong when reconnecting
+            if (this.status === Status.RECONNECTING || this.status === Status.CONNECTING) {
+                console.info('WS RECONNECT', 'ignore reconnect(), because still in reconnecting/connecting');
+                return
+            }
+            this.disconnect().then(() => {
+                // TODO check session expire
+                const firstTime = this.config.retry_times === RETRY_TIMES;
+                const clearTO = () => {
+                    if (this.reconnectTimeout) {
+                        clearTimeout(this.reconnectTimeout)
+                    }
+                    this.reconnectTimeout = null;
+                    if (this.reconnectInterval) {
+                        clearInterval(this.reconnectInterval);
+                        this.reconnectInterval = null;
+                    }
+                    this.reconnectCountDown = null;
+                }
+                /**
+                 * immediate === true, ignore others condition
+                 */
+                if (immediate) {
+                    console.info('WS RECONNECT', 'immediate');
+                    clearTO();
+                    this.connect(true);
+                    if (this.config.retry_times >= 0) this.config.retry_times--;
+                    return
+                }
+                /**
+                 * first time lost connection, reconnect at once
+                 */
+                if (firstTime) {
+                    console.info('WS RECONNECT', 'first time');
+                    clearTO()
+                    this.connect(true);
+                    if (this.config.retry_times >= 0) this.config.retry_times--;
+                } else if (!this.reconnectTimeout) {
+
+                    console.info('WS RECONNECT', 'schedule reconnect', `retry times: ${this.config.retry_times}`);
+                    this.reconnectTimeout = setTimeout(() => {
+                        console.info('WS RECONNECT', 'execute reconnect', `retry times: ${this.config.retry_times}`);
+                        clearTO();
+                        this.connect(true);
+                        if (this.config.retry_times >= 0) this.config.retry_times--;
+                    }, RETRY_WAITING);
+                    this.reconnectCountDown = RETRY_WAITING;
+                    this.reconnectInterval = setInterval(() => {
+                        if (this.reconnectCountDown != null && this.reconnectCountDown >= 0) {
+                            this.reconnectCountDown -= 1000;
+                        } else {
+
+                        }
+                    }, 1000)
+                } else {
+                    // ! will do nothong when reconnecting
+                    console.info('WS RECONNECT', 'ingore connect error, because reconnect was scheduled!');
+                }
+            })
+        }
+        reconnectTimeout: NodeJS.Timer | null = null;
+        reconnectCountDown: number | null = null;
+        reconnectInterval: NodeJS.Timer | null = null;
+    }
+
+    export class Controller extends WSControllerBase {
+        private validateNotebookStatus(notebookId: string, newStatus: NotebookStatus) {
+            if (this.store) {
+                const nb = this.store.getters.nbByNId(notebookId) as INotebook;
+                if (!nb) {
+                    console.warn(`cannot find note:${notebookId} in workspace store`);
+                    return false;
+                }
+                return WorkspaceSrv.validateNotebookStatus(nb.status, newStatus)
+            }
+            return false;
+        }
+        /* Handlers for packets defined in WSPacket.OP */
+        @WSMessage({ isError: true })
+        [WSPacket.OP.INTERNAL_ERROR](m: WSExceptionPacket) {
+            console.warn("WS: ", "INTERNAL_ERROR", m);
+            // TODO @exception handler
+            /* Update store */
+            this.store.dispatch("haltAll");
+            return new ZetaException(m, { path: 'notebook' }, this.responseHeaders)
+        }
+        @WSMessage({ isError: true })
+        [WSPacket.OP.NB_CODE_EXECUTE_ERROR](m: WSExceptionPacket) {
+            console.warn("WS: ", "NB_CODE_EXECUTE_ERROR", m);
+            let ex = new ZetaException(m, { path: 'notebook' }, this.responseHeaders)
+            /**
+             * // comment by @tianrsun @2019-04-01
+             * // enhance sub notebook
+             * // codes below won't be excuted when running subnotebook
+             * // the error would be hanlded in function `sendAsync`
+             * comment by tianrsun @2019-06-12
+             *
+             */
+
+            try {
+                const { code, errors, jobId, notebookId, reqId } = m.errorDetail.context;
+                /* Update store */
+                this.store.dispatch("haltJob", { nid: notebookId, jobId, reqId, seqId: code.seq, status: JobStatus.ERROR });
+                this.store.dispatch("setJobStatus", { jobId, reqId, status: JobStatus.ERROR, info: pretty(errors) });
+                ex.props({ workspaceId: notebookId }).resolve();
+            } catch (e) {
+                ex.resolve(false)
+            }
+            return ex
+        }
+        @WSMessage({ isError: true })
+        [WSPacket.OP.NB_CODE_SESSION_EXPIRED](m: WSExceptionPacket) {
+            console.warn("WS: ", "NB_CODE_SESSION_EXPIRED", m);
+            const notebookId = m.errorDetail.context.notebookId;
+            const body = m.errorDetail.context;
+            let notebook: INotebook = this.store.getters.nbByNId(body.notebookId);
+            let e = new ZetaException(m).props({ path: 'notebook', workspaceId: notebookId }).resHeaders(this.responseHeaders);
+            // enhance subNotebook session expired
+            if (notebook.nbType === 'sub_nb') {
+                const collectionId = notebook.collectionId
+                const parentNotebook: MultiNotebook = this.store.getters.nbByNId(collectionId)
+                if (body.jobId) {
+                    this.store.dispatch("haltSubNotebookJobsByNId", { nid: parentNotebook.notebookId });
+                    this.store.dispatch("setJobStatus", { jobId: body.jobId, reqId: body.reqId, status: JobStatus.ERROR, info: pretty(body.errors) });
+                }
+                // halt jobs for multi notebook
+                this.store.dispatch("setSubNotebookStatus", { nid: parentNotebook.notebookId, status: NotebookStatus.DISCONNECTING })
+                this.store.dispatch("setSubNotebookStatus", { nid: parentNotebook.notebookId, status: NotebookStatus.OFFLINE })
+                e.message = `Connect closed because of connection expired.`;
+
+            } else {
+                /* Update store */
+                if (body.jobId) {
+                    this.store.dispatch("haltJob", { nid: body.notebookId, jobId: body.jobId, reqId: body.reqId, seqId: body.code.seq, status: JobStatus.ERROR });
+                    this.store.dispatch("setJobStatus", { jobId: body.jobId, reqId: body.reqId, status: JobStatus.ERROR, info: pretty(body.errors) });
+                }
+                this.store.dispatch("setNotebookStatus", { nid: body.notebookId, status: NotebookStatus.DISCONNECTING })
+                this.store.dispatch("setNotebookStatus", { nid: body.notebookId, status: NotebookStatus.OFFLINE })
+                e.message = `Connect closed because of connection expired.`;
+            }
+            return e
+        }
+        @WSMessage({ isError: true })
+        [WSPacket.OP.NB_CODE_INVALID_NOTEBOOK_STATUS](m: WSPacket.JobErrorRes) {
+            console.warn("WS: ", "NB_CODE_INVALID_NOTEBOOK_STATUS", m)
+            /* Update store */
+            this.store.dispatch("setNotebookStatus", { nid: m.notebookId, status: NotebookStatus.IDLE });
+            this.store.dispatch("setJobStatus", { jobId: m.jobId, reqId: m.jobId, status: JobStatus.ERROR });
+            /* When this error is trigger, there should be not queries in store.
+             * Because SQLSplitted will not be generated.
+             * So no need to set query status.
+             */
+
+            return ZetaExceptionFacotry({ data: m }).resolve();
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_JOB_DONE](m: WSPacket.JobDoneRes) {
+            console.info("WS: ", "NB_CODE_JOB_DONE", m);
+            /** check notebook status */
+            if (!this.validateNotebookStatus(m.notebookId, NotebookStatus.IDLE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.IDLE)
+                return
+            }
+            /**
+             * // comment by @tianrsun @2019-04-01
+             * // enhance sub notebook
+             * // codes below won't be excuted when running subnotebook
+             * // the job done message would be hanlded in function `sendAsync`
+             */
+
+            const nb: INotebook | undefined = this.store.getters.nbByNId(m.notebookId);
+            if (!nb) {
+                console.warn('cannot find notebook id:' + m.notebookId)
+                return
+            }
+
+            this.store.dispatch("setNotebookStatus", { nid: m.notebookId, status: NotebookStatus.IDLE });
+            this.store.dispatch("setJobStatus", { jobId: m.jobId, reqId: m.reqId, status: JobStatus.SUCCESS });
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_DUMP_DONE](m: WSPacket.JobDoneRes) {
+            console.info("WS: ", "NB_CODE_DUMP_DONE", m);
+            /** check notebook status */
+            if (!this.validateNotebookStatus(m.notebookId, NotebookStatus.IDLE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.IDLE)
+                return
+            }
+            /* Update store */
+            this.store.dispatch("setNotebookStatus", { nid: m.notebookId, status: NotebookStatus.IDLE });
+            this.store.dispatch("setJobStatus", { jobId: m.jobId, reqId: m.reqId, status: JobStatus.SUCCESS });
+            let notebook = this.store.getters.nbByNId(m.notebookId)
+            let interpreter = CodeTypes[notebook.connection.codeType].interpreter
+            if (notebook.connection.clusterId === 16) {
+                interpreter = 'carmel'
+            }
+            const workspaceId = m.notebookId;
+            WorkspaceSrv.notebookRemoteService.props({
+                path: 'notebook',
+                workspaceId
+            })
+            WorkspaceSrv.dumpResult(m.notebookId, interpreter, m.jobId);
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_JOB_READY](m: WSPacket.JobReadyRes) {
+            console.info("WS: ", "NB_CODE_JOB_READY", m);
+            /** check notebook status */
+            if (!this.validateNotebookStatus(m.notebookId, NotebookStatus.RUNNING)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.RUNNING)
+                return
+            }
+            /* Update store */
+            this.store.dispatch("handleJobReady", { nid: m.notebookId, jobId: m.jobId, reqId: m.reqId, status: NotebookStatus.RUNNING });
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_PREPROCESSED](m: WSPacket.SplittedRes) {
+            console.info("WS: ", "NB_CODE_PREPROCESSED", m);
+
+            /* Update store */
+            this.store.dispatch("addQueries", { nid: m.notebookId, jobId: m.jobId, reqId: m.reqId, codes: m.codes });
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_STATEMENT_START](m: WSPacket.QueryStart) {
+            console.info("WS: ", "NB_CODE_STATEMENT_START", m);
+
+            /* Update store */
+            this.store.dispatch("updateQuery", { jobId: m.jobId, seqId: m.seq, query: { startTime: m.startDt, statementId: m.zetaStatementKey } });
+            // update repository lastRunTime
+            this.store.dispatch("upadateFileLastRun", { notebookId: m.noteId, startTime: m.startDt });
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_STATEMENT_PROGRESS](m: WSPacket.QueryProgressRes) {
+            console.info("WS: ", "NB_CODE_STATEMENT_PROGRESS", m);
+
+            /* Update store */
+            let newQuery = <IQuery>{ status: m.status }
+            this.store.dispatch("updateNotebook", { notebookId: m.notebookId, monitorUrl: m.sparkJobUrl });
+            this.store.dispatch("setQueryProgress", { jobId: m.jobId, reqId: m.reqId, seqId: m.code.seq, update: newQuery });
+        }
+        @WSMessage()
+        [WSPacket.OP.NB_CODE_STATEMENT_SUCCESS](m: WSPacket.QueryResultRes) {
+            console.info("WS: ", "NB_CODE_STATEMENT_SUCCESS", m);
+            /* Update store */
+            let result = JSON.parse(m.result) as WSPacket.ResultField;
+            let resultList = result.result;
+
+            if (!resultList || resultList.length === 0) {
+                console.warn("ResultList is empty", result);
+                return;
+            }
+            else if (resultList.length > 1) {
+                console.warn("ResultList.length > 1", result);
+            }
+
+            let resultIndex: number = -1;
+            for (let i = 0; i < resultList.length; i++) {
+                if (resultList[i].type === "TABLE") {
+                    resultIndex = i;
+                    break;
+                }
+            }
+
+            if (resultIndex !== -1) {
+                if (resultIndex >= resultList.length) {
+                    console.warn("Result Type is not table but OP is NB_CODE_JOB_DONE", result);
+                    return;
+                }
+
+                let resultTable = resultList[resultIndex] as WSPacket.ResultTable;
+                if (!resultTable) {
+                    console.warn("ResultTable not exist", result);
+                    return;
+                }
+
+                let headers = resultTable.schema;
+                /* transform resultTable.rows from (key, value) style
+                 * to array style
+                 */
+                // let indices: { [K: string]: number } = headers.reduce((pre, col, index) => ({ ...pre, [col]: index }), {})
+                let rows = resultTable.rows.map(row => {
+                    let cols = Object.keys(row)
+                    let arr = cols.map(col => row[col]);
+                    return arr
+                })
+
+                this.store.dispatch("updateQuery", { jobId: m.jobId, seqId: m.code.seq, query: { endTime: m.endDt } });
+                this.store.dispatch("addQueryResult", { nid: m.notebookId, jobId: m.jobId, reqId: m.reqId, seqId: m.code.seq, headers: headers, rows: rows });
+            } else {
+                this.store.dispatch("updateQuery", { jobId: m.jobId, seqId: m.code.seq, query: { endTime: m.endDt } });
+                let content: Array<IQueryContent> = [];
+                for (let resultContent of resultList) {
+                    content.push((resultContent as WSPacket.ResultContent) as IQueryContent);
+                }
+                this.store.dispatch("addQueryResult", { nid: m.notebookId, jobId: m.jobId, reqId: m.reqId, seqId: m.code.seq, content });
+            }
+        }
+        @WSMessage()
+        [WSPacket.OP.GREETING](m: any) {
+            console.info("WS: ", "CONNECTIONGREETING_SUCCESS", m)
+            this.responseHeaders = { "zds-server-req-id": m };
+        }
+        @WSMessage({ alias: "CONNECTION_RESP", mappingPath: { notebookId: 'noteId' } })
+        [WSPacket.OP.CONNECTION_SUCCESS](m: any) {
+            console.info("WS: ", "CONNECTION_SUCCESS", m)
+            let notebookId = m.noteId;
+            /** check notebook status */
+            if (!this.validateNotebookStatus(notebookId, NotebookStatus.IDLE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.IDLE)
+                return
+            }
+            let notebook: INotebook = this.store.getters.nbByNId(notebookId);
+            this.store.dispatch("setNotebookStatus", { nid: notebookId, status: NotebookStatus.IDLE });
+            Util.getApp().$message.success(`\`${notebook.name || ''}\` Connect succeed`);
+        }
+        @WSMessage({ isError: true, alias: "CONNECTION_RESP", mappingPath: { notebookId: 'errorDetail.context.notebookId' } })
+        [WSPacket.OP.CONNECTION_ABORT](m: WSExceptionPacket) {
+            // comments by tianrsun @2019-05-20
+            // ```CONNECTION_ABORT``` should not show any message popup
+            console.info("WS: ", "CONNECTION_ABORT", m)
+            let notebookId = m.errorDetail.context.notebookId;
+
+            /** check notebook status */
+            if (!this.validateNotebookStatus(notebookId, NotebookStatus.OFFLINE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.OFFLINE)
+                return
+            }
+            if (notebookId) {
+                this.store.dispatch("setNotebookStatus", { nid: notebookId, status: NotebookStatus.OFFLINE });
+                return new ZetaException(m, { path: 'notebook', workspaceId: notebookId }, this.responseHeaders).resolve()
+            }
+        }
+        @WSMessage()
+        [WSPacket.OP.CONNECTION_PROGRESS](m: WSPacket.ConnectProgressRes) {
+            console.info("WS: ", "CONNECTION_PROGRESS", m);
+
+            this.store.dispatch('setConnectProgress', { nid: m.noteId, progress: m.progress })
+        }
+        @WSMessage({ isError: true, alias: "CONNECTION_RESP", mappingPath: { notebookId: 'errorDetail.context.notebookId' } })
+        [WSPacket.OP.CONNECTION_ERROR](m: WSExceptionPacket) {
+            console.warn("WS: ", "CONNECTION_ERROR", m)
+            let msg = "Unknown Error";
+            let notebookId = m.errorDetail.context.notebookId;
+            /** check notebook status */
+            if (!this.validateNotebookStatus(notebookId, NotebookStatus.OFFLINE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.OFFLINE)
+                return
+            }
+            if (!notebookId) return
+            let notebook: INotebook = this.store.getters.nbByNId(notebookId)
+            let codeType: CodeType;
+            let notebookName: string;
+            if (!notebook) {
+                console.warn('cannot find notebook')
+                return
+            } else {
+                codeType = notebook.connection!.codeType;
+                notebookName = notebook.name;
+            }
+            let statusCode = null;
+            let ex = new ZetaException(m, { path: 'notebook', workspaceId: notebookId }, this.responseHeaders);
+            switch (codeType) {
+                case CodeType.SQL:
+                    // try {
+                    //     statusCode = m.errorDetail.cause.zetaStatus.statusCode
+
+                    // }
+                    // catch(e){
+                    //     console.error("parse msg error", e)
+                    // }
+                    // comments by tianrsun @2019-05-16
+                    // // popup message for current
+                    // // TODO should dispach connect err in Vue context
+                    // comments by tianrsun @2019-06-04
+                    // // popup by zeta exception
+                    // comments by tianrsun @2019-06-21
+                    // handle error in adaptee
+                    // if(statusCode && statusCode == '9003'){
+                    //     let url = `https://wiki.vip.corp.ebay.com/x/4J6sJ`;
+                    //     let template = `\`${notebookName}\` Connect failed. ` +
+                    //     `Windows PET password expired. Click <a href=${url}>here</a> to reset password`
+                    //     ex.template(template);
+                    // }else if(statusCode && statusCode == '9002') {
+                    //     let url = `https://wiki.vip.corp.ebay.com/x/4J6sJ`;
+                    //     ex.template(`\`${notebookName}\` Connect failed. ` +
+                    //     `Windows PET account locked. Click <a href=${url}>here</a> to unlock.`)
+                    // }else if(statusCode && statusCode == '9001'){
+                    //     let url = `${location.protocol}//${location.host}/${Util.getPath()}#/settings`;
+                    // 	ex.template(`\`${notebookName}\` Connect failed. ` +
+                    //     `Windows PET password incorrect, please <a href=${url}>change your password</a>`)
+                    // } else {
+                    //     ex.template(`\`${notebookName}\` Connect failed.`)
+                    //     ex.causeMessage = msg
+                    // }
+                    break;
+                case CodeType.TERADATA:
+                    try {
+                        if (/UserId, Password or Account is invalid/.test(m.errorDetail.message)) {
+                            let url = `${location.protocol}//${location.host}/${Util.getPath()}#/settings`;
+                            // ex.template(`\`${notebookName}\` Connect failed. ` +
+                            ex.template(`Connect failed. ` +
+                                `Password or Account is invalid, Please reset your <a href=${url}> TD pass in Zeta</a>`)
+                        } else if (/Password is not set/.test(m.errorDetail.message)) {
+                            let url = `${location.protocol}//${location.host}/${Util.getPath()}#/settings`;
+                            // ex.template(`\`${notebookName}\` Connect failed. ` +
+                            ex.template(`Connect failed. ` +
+                                `Password is not set, Please set your <a href=${url}> TD pass in Zeta</a>`)
+                        } else if (_.has(ex, 'context.zetaStatus.statusCode') && ex.context.zetaStatus.statusCode === '9100') {
+                            let message = ex.message;
+                            message = message.replace(/notebook.*(\[.*?\])/, '')
+                            // ex.template(`\`${notebookName}\` Connect failed.<br>` + message)
+                            ex.template(`Connect failed.<br>` + message)
+                        } else {
+                            // ex.template(`\`${notebookName}\` Connect failed.`)
+                            ex.template(`Connect failed.`)
+                        }
+                    }
+                    catch (e) {
+                        console.error("parse msg error", e)
+                        // e.message = ex.template(`\`${notebookName}\` Connect failed.`)
+                        e.message = ex.template(`Connect failed.`)
+                    }
+                    break;
+                default:
+                    // ex.template(`\`${notebookName}\` Connect failed.`)
+                    ex.template(`Connect failed.`)
+                    break;
+            }
+            this.store.dispatch("setNotebookStatus", { nid: notebookId, status: NotebookStatus.OFFLINE });
+            return ex
+        }
+        @WSMessage({ alias: "DISCONNECTION_RESP", mappingPath: { notebookId: 'noteId' } })
+        [WSPacket.OP.DISCONNECTION_SUCCESS](m: any) {
+            console.info("WS: ", "DISCONNECTION_SUCCESS", m)
+            /** check notebook status */
+            if (!this.validateNotebookStatus(m.noteId, NotebookStatus.OFFLINE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.OFFLINE)
+                return
+            }
+            this.store.dispatch("setNotebookStatus", {
+                nid: m.noteId,
+                status: NotebookStatus.OFFLINE
+            })
+        }
+        @WSMessage({ isError: true, alias: "DISCONNECTION_RESP", mappingPath: { notebookId: 'errorDetail.context.notebookId' } })
+        [WSPacket.OP.DISCONNECTION_ERROR](m: WSExceptionPacket) {
+            console.info("WS: ", "DISCONNECTION_ERROR", m)
+            const notebookId = m.errorDetail.context.notebookId;
+            /** check notebook status */
+            if (!this.validateNotebookStatus(notebookId, NotebookStatus.OFFLINE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.OFFLINE)
+                return
+            }
+
+            this.store.dispatch("setNotebookStatus", {
+                nid: notebookId,
+                status: NotebookStatus.OFFLINE
+            })
+            let notebook: INotebook = this.store.getters.nbByNId(notebookId);
+            let e = new ZetaException(m, { path: 'notebook', workspaceId: notebookId }, this.responseHeaders)
+            e.message = `Disconnect failed`
+            return e
+        }
+        @WSMessage({ alias: "JOB_CANCEL_RESP", mappingPath: { notebookId: 'notebookId', jobId: 'jobId' } })
+        [WSPacket.OP.CANCEL_SUCCESS](m: any) {
+            console.info("WS: ", "CANCEL_SUCCESS", m)
+            if (!this.validateNotebookStatus(m.notebookId, NotebookStatus.IDLE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.IDLE)
+                return
+            }
+            this.store.dispatch("setNotebookStatus", { nid: m.notebookId, status: NotebookStatus.IDLE });
+            this.store.dispatch("haltJob", {
+                nid: m.notebookId,
+                jobId: m.jobId,
+                status: JobStatus.CANCELED
+            });
+        }
+        @WSMessage({ isError: true, alias: "JOB_CANCEL_RESP", mappingPath: { notebookId: 'notebookId', jobId: 'jobId' } })
+        [WSPacket.OP.CANCEL_ERROR](m: any) {
+            console.info("WS: ", "CANCEL_ERROR", m)
+            //! const notebookId = m.errorDetail.cause.error.notebookId;
+
+            if (!this.validateNotebookStatus(m.notebookId, NotebookStatus.IDLE)) {
+                console.warn('invalid notebook status', 'set: ' + NotebookStatus.IDLE)
+                return
+            }
+            this.store.dispatch("setNotebookStatus", { nid: m.notebookId, status: NotebookStatus.IDLE });
+            return ZetaExceptionFacotry({ data: m })
+        }
+        public notebookConnect(notebookId: string, clusterId: number, clusterName: string, proxyUser: string, interpreter: string, preference: IPreference) {
+            return this.sendAsync(WSPacket.OP.NB_CONNECT, {
+                userName: Util.getNt(),
+                noteId: notebookId,
+                interpreter,
+                prop: {
+                    clusterId,
+                    proxyUser,
+                    preference: JSON.stringify(preference)
+                }
+            }, {
+                opAlias: 'CONNECTION_RESP',
+                mapping: {
+                    notebookId
+                }
+            });
+        }
+        public multiNotebookConnect(notebookId: string, clusterId: number, clusterName: string, proxyUser: string, interpreter: string, preference: IPreference) {
+            return this.sendAsync(WSPacket.OP.NB_CONNECT, {
+                userName: Util.getNt(),
+                noteId: notebookId,
+                interpreter,
+                prop: {
+                    "zds.livy.code.type": "sql",
+                    clusterId,
+                    proxyUser,
+                    preference: JSON.stringify(preference)
+                },
+                isCollectionAware: true
+            }, {
+                opAlias: 'CONNECTION_RESP',
+                mapping: {
+                    notebookId
+                }
+            });
+        }
+
+        public jdbcNotebookConnect(notebookId: string, host: string, interpreter: string, jdbcType: string, preference: IPreference, user?: string, password?: string, database?: string, ssl?: boolean, port?: number, principal?: string, props: any = {}) {
+            return this.sendAsync(WSPacket.OP.NB_CONNECT, {
+                userName: Util.getNt(),
+                noteId: notebookId,
+                interpreter,
+                prop: {
+                    host,
+                    user,
+                    password,
+                    database,
+                    ssl,
+                    'jdbc.props.hive.server2.remote.principal': principal,
+                    port,
+                    jdbc_type: jdbcType,
+                    preference: JSON.stringify(preference),
+                    ...props
+                }
+            }, {
+                opAlias: 'CONNECTION_RESP',
+                mapping: {
+                    notebookId
+                }
+            })
+        }
+
+        public notebookDisconnect(notebookId: string): Promise<any> {
+            return this.sendAsync(WSPacket.OP.NB_DISCONNECT, {
+                userName: Util.getNt(),
+                noteId: notebookId
+            }, {
+                opAlias: "DISCONNECTION_RESP",
+                mapping: {
+                    notebookId
+                }
+            }) as Promise<any>;
+        }
+
+        /* Request controller defined in WSPacket.OP */
+        public jobSubmit(notebookId: string, codes: string, interpreter?: string | null) {
+
+            /* Update store */
+            this.store.dispatch("setNotebookStatus", { nid: notebookId, status: NotebookStatus.SUBMITTING });
+            /* Inform backend */
+            this.send(WSPacket.OP.NB_CODE_JOB_SUBMIT, {
+                notebookId,
+                reqId: uuid(),
+                codes,
+                interpreter: interpreter ? interpreter : CodeTypes[this.store.getters.currentCodeType].interpreter
+            });
+        }
+        public jobSubmitInMulti(subNotebookId: string, codes: string, interpreter: string, codeType: 'sql' | 'pyspark' | 'sparkr' = 'sql') {
+
+            /**
+             *
+             *  Update store */
+            this.store.dispatch("setNotebookStatus", { nid: subNotebookId, status: NotebookStatus.SUBMITTING });
+            /* Inform backend */
+            return this.send(WSPacket.OP.NB_CODE_JOB_SUBMIT, {
+                notebookId: subNotebookId,
+                reqId: uuid(),
+                codes,
+                interpreter: interpreter,
+                isCollectionAware: true,
+                prop: {
+                    "zds.livy.code.type": codeType
+                }
+            });
+        }
+
+        public jobDump(notebookId: string, codes: string, interpreter?: string | null) {
+
+            /* Update store */
+            this.store.dispatch("setNotebookStatus", { nid: notebookId, status: NotebookStatus.SUBMITTING });
+
+            /* Inform backend */
+            this.send(WSPacket.OP.NB_CODE_JOB_DUMP, {
+                notebookId,
+                reqId: uuid(),
+                codes,
+                interpreter: interpreter ? interpreter : CodeTypes[this.store.getters.currentCodeType].interpreter
+            });
+        }
+
+        public jobCancel(notebookId: string, jobId: string): Promise<any> {
+            return this.sendAsync(WSPacket.OP.NB_CODE_JOB_CANCEL, {
+                userName: Util.getNt(),
+                notebookId,
+                jobId
+            }, {
+                opAlias: "JOB_CANCEL_RESP",
+                mapping: {
+                    notebookId,
+                    jobId
+                }
+            }) as Promise<any>
+        }
+        public syncNotebookResult(noteId: string) {
+          this.send(WSPacket.OP.NB_RECOVER, {
+            noteId
+          });
+        }
+    }
+
+    export const service = new Controller();
+
+}

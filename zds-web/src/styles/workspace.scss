@@ -1,0 +1,143 @@
+@import '@/styles/global.scss';
+// .workspace-container {
+//     position: relative;
+//     border: 1px solid #dcdfe6;
+//     -webkit-box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
+//     box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
+//     .label {
+//         background-color: $zeta-label-lvl1;
+//         font-size: 13px;
+//         font-weight: 700;
+//         height: 43px;
+//         line-height: 43px;
+//         padding-left: 5px;
+//         &.label-default {
+//             font-size: 18px;
+//             background-color: initial;
+//         }
+//     }
+// }
+.tools-container {
+  .label {
+    background-color: $zeta-label-lvl1;
+    font-size: 13px;
+    font-weight: 700;
+    height: 43px;
+    line-height: 43px;
+    padding-left: 5px;
+    &.label-default {
+      font-size: 18px;
+      background-color: initial;
+    }
+  }
+}
+.conatiner {
+  .tools-container,
+  .faq-container,
+  .favorite-container,
+  .hdfs-container,
+  .rele-container,
+  .repo-container,
+  .schedule-container,
+  .settings-container {
+    margin-top: 30px;
+    height: calc(100% - 30px);
+  }
+}
+
+$apolloColor: #569ce1;
+$aresColor: #d85945;
+$hermesColor: #e2b258;
+$herculesColor: #d88045;
+$numozartColor: #9a6197;
+$hopperColor: #608d75;
+$kylinColor: #965d31;
+$dashboardColor: #41d3bd;
+$rheosColor: #4375a0;
+$metaSheetColor: #e6a23c;
+
+i.workspace-icon {
+  @mixin pIcon($color, $content) {
+    color: $color;
+    padding: 2px 2px;
+    font-size: 10px;
+    border: 1px solid $color;
+    border-radius: 2px;
+    font-family: 'Arial';
+    font-style: normal;
+    margin: 0 2px;
+    white-space: nowrap;
+    opacity: 0.5;
+    &:hover,
+    &.active {
+      opacity: 1;
+    }
+    &::after {
+      content: $content;
+    }
+  }
+  &.dashboard {
+    @include pIcon($dashboardColor, 'DAH');
+  }
+  &.hercules {
+    @include pIcon($herculesColor, 'HER');
+  }
+  &.herculessub {
+    @include pIcon($herculesColor, 'HSB');
+  }
+
+  &.apollo {
+    @include pIcon($apolloColor, 'APO');
+  }
+  &.apollorno {
+    @include pIcon($apolloColor, 'APO');
+  }
+
+  &.ares {
+    @include pIcon($aresColor, 'ARE');
+  }
+  &.mozart {
+    @include pIcon($numozartColor, 'MOZ');
+  }
+  &.numozart {
+    @include pIcon($numozartColor, 'MOZ');
+  }
+
+  &.hopper {
+    @include pIcon($hopperColor, 'HOP');
+  }
+
+  &.hermes {
+    @include pIcon($hermesColor, 'HEM');
+  }
+
+  &.hermeslvs {
+    @include pIcon($hermesColor, 'HEM');
+  }
+
+  &.kylin {
+    @include pIcon($kylinColor, 'KYL');
+  }
+  &.kylin-rno {
+    @include pIcon($kylinColor, 'KYL');
+  }
+  &.kylin-rno-qa {
+    @include pIcon($kylinColor, 'KYL');
+  }
+  &.rheos {
+    @include pIcon($rheosColor, 'RHE');
+  }
+
+  &.meta-sheet {
+    @include pIcon($metaSheetColor, 'MET');
+  }
+}
+
+.ws-tabs-nav-bar {
+  ul {
+    height: 100%;
+    // width: calc(100% - 30px);
+    overflow: hidden;
+    list-style-type: none;
+  }
+}

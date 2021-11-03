@@ -1,0 +1,166 @@
+@import '@/styles/global.scss';
+$ui-font-size: 13px;
+$subpanel-nav-tabs-height: 35px;
+$result-nav-tabs-height: 35px;
+$query-nav-tabs-width: 45px;
+$query-nav-tabs-height: 35px;
+$resuilt-tab-list-li-width: 100px;
+
+/* -- <ResultWrapper> -- */
+.result-wrapper {
+    display: flex;
+
+    .el-tabs {
+        display: flex;
+        flex-direction: column;
+
+        .el-tabs__header {
+            /* IMPORTANT: If user-select: none is not set,
+       * editor will scroll when resize
+       */
+            user-select: none;
+        }
+
+        >.el-tabs__header .el-tabs__item {
+            height: $subpanel-nav-tabs-height;
+            line-height: $subpanel-nav-tabs-height;
+        }
+
+        >.el-tabs__content {
+            .el-tab-pane {
+                height: 100%;
+            }
+        }
+
+        >.el-tabs__content {
+            padding: 0;
+            flex: 1;
+        }
+    }
+
+    .tabs__items {
+        /** 
+     * IMPORTANT: Set explicitly the height of <Result> allows for correct scolling. 
+     * SCSS Paste syntax is used here. 
+     * REF: https://github.com/sass/sass/issues/818 
+     */
+        height: calc(100% - #{$subpanel-nav-tabs-height});
+    }
+
+    .icon {
+        font-size: 20px;
+        // padding-right: 4px;
+    }
+
+    .tabs__container {
+        height: $subpanel-nav-tabs-height;
+        font-size: 12px;
+    }
+
+    >div {
+        /* Extend tabs and tabs-item too full width */
+        width: 100%;
+    }
+}
+
+/* -- <ResultTable> -- */
+
+/* Overwrite <v-data-table> style. 
+ * The default font size is too large.
+ */
+.result {
+
+    .el-table {
+        font-family: Roboto, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        .el-table__header-wrapper {
+            th {
+                font-weight: inherit;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+                border-right: none;
+                color: rgba(0, 0, 0, 1);
+            }
+        }
+    }
+
+    table.table {
+        thead {
+            tr {
+                height: 35px;
+            }
+        }
+
+        tbody {
+
+            td,
+            th {
+                height: 28px;
+            }
+        }
+    }
+}
+
+/* -- <Result> -- */
+.result {
+
+    display: flex;
+    flex: 1;
+    height: calc(100% - #{$result-nav-tabs-height});
+
+    .right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    .result-info {
+        flex: 0;
+
+        background-color: $zeta-label-lvl1;
+        border-radius: 3px;
+        font-size: $ui-font-size;
+        padding: 1px 23px;
+    }
+
+    .result-table {
+        flex: 1;
+    }
+
+    .query-tabs-nav-bar {
+        // height: calc(100% - #{$result-nav-tabs-height});
+        border-right: 1px solid #ebeef5;
+        width: $query-nav-tabs-width+5;
+        min-width: $query-nav-tabs-width+5;
+        overflow-y: auto;
+
+        li {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+
+            button {
+                height: $query-nav-tabs-height;
+                width: $query-nav-tabs-width - 3px;
+                outline: none;
+            }
+
+            &:hover,
+            &.active {
+                border-right: 2px solid $zeta-global-color;
+            }
+
+        }
+
+        &::-webkit-scrollbar {
+            width: 0px;
+            /* remove scrollbar space */
+            background: transparent;
+            /* optional: just make scrollbar invisible */
+        }
+
+    }
+}
+
+/* -- <ResultTabs> -- */

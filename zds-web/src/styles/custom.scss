@@ -1,0 +1,633 @@
+@import './global.scss';
+
+html {
+    overflow: hidden;
+    font-size: 14px;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    font-family: $font-default;
+    font-weight: $zeta-font-weight;
+    color: $zeta-font-color;
+}
+
+button,
+input,
+select,
+textarea {
+    background-color: transparent;
+    border-style: none;
+    color: inherit;
+    font: inherit;
+}
+
+button,
+select {
+    text-transform: none;
+}
+
+* {
+    background-repeat: no-repeat;
+    padding: 0;
+    margin: 0;
+}
+
+hr.line {
+    color: $zeta-global-color-disable;
+    border: 0.5px solid;
+}
+
+/* Element UI notification customize */
+
+.el-notification {
+    width: 40vw;
+
+    .el-notification__group {
+        width: calc(40vw - 100px);
+
+        p {
+            word-wrap: break-word;
+        }
+    }
+
+}
+
+.el-message-box__message {
+    overflow-wrap: break-word;
+}
+
+.el-message {
+    top: 115px;
+
+    .el-message--error {
+        p.el-message__content {
+            // overflow-y: auto;
+            max-height: 300px;
+            margin-right: 20px;
+        }
+    }
+}
+
+$--color-white:#FFF;
+
+.el-button {
+
+    i[class^="zeta-icon-"],
+    i[class*=" zeta-icon-"] {
+        color: inherit;
+    }
+}
+
+$button-font-size: 14px;
+$button-padding:16px 20px;
+
+.el-button {
+
+    /*default*/
+    & {
+        min-width: 90px;
+        padding: 7px 15px;
+        font-size: 14px;
+    }
+
+    &.el-button--medium {
+        min-width: 0px;
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+
+    &.el-button--mini {
+        min-width: 0px;
+        padding: 5px 12px;
+        font-size: 12px;
+
+    }
+
+    &.el-button--small {
+        min-width: 0px;
+        padding: 7px 15px;
+        font-size: 14px;
+    }
+
+    &.el-button--large {
+        min-width: 0px;
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+
+    &,
+    &.el-button--medium,
+    &.el-button--mini,
+    &.el-button--small,
+    &.el-button--large {
+        &.el-button--text {
+            min-width: 0px;
+            padding: 0px;
+            border: none;
+        }
+    }
+
+
+
+}
+
+.el-dropdown-menu {
+    padding: 5px 0;
+}
+
+.el-select-dropdown .el-scrollbar .el-select-dropdown__list li.el-select-dropdown__item {
+    height: 30px !important;
+    line-height: 30px !important;
+}
+
+.el-dropdown-menu__item {
+    line-height: 30px;
+}
+
+.el-dropdown-menu__item:not(.is-disabled):hover {
+    color: $zeta-font-color;
+    background-color: $zeta-primary-background;
+}
+
+// .el-button--danger.is-plain,
+.el-button--danger {
+    color: white;
+    border: none;
+
+    &:focus,
+    &:hover {
+        background-color: $zeta-global-red-hover;
+    }
+
+    &,
+    &:active {
+        background-color: $zeta-global-color-red;
+    }
+
+    &.is-disabled:hover,
+    &.is-disabled {
+        background-color: $zeta-global-color-disable;
+    }
+}
+
+.el-button--default {
+    &.is-plain {
+        color: $zeta-global-color;
+        border-color: $zeta-global-color;
+    }
+
+    &.is-plain:hover {
+        color: $zeta-global-color-heighlight;
+        border-color: $zeta-global-color-heighlight;
+    }
+
+    &.is-plain:active {
+        color: $zeta-global-color;
+        border-color: $zeta-global-color;
+    }
+
+    &.is-disabled:not(.is-plain) {
+        color: $--color-white;
+    }
+}
+
+.el-button--primary,
+button.primary {
+    &.is-disabled:not(.is-plain) {
+
+        &,
+        &:hover,
+        &:focus,
+        &:active {
+            color: $--color-white;
+            background-color: $zeta-global-color-disable !important;
+            border: 0 !important;
+        }
+    }
+
+    &:not(.is-plain) {
+
+        &:hover,
+        &:focus,
+        &:active {
+            color: $--color-white;
+            background-color: $zeta-global-color-heighlight;
+            // border:0 !important;
+        }
+    }
+
+    &.is-plain {
+
+
+        &:hover,
+        &:focus,
+        &:active {
+            color: $--color-white;
+            background-color: $zeta-global-color-heighlight;
+            // border:0 !important;
+        }
+    }
+
+}
+
+.el-button--text {
+    color: $zeta-global-color;
+
+    &.is-disabled {
+
+        &,
+        &:hover,
+        &:focus,
+        &:active {
+            color: $zeta-global-color-disable !important;
+        }
+    }
+
+    &:hover,
+    &:focus,
+    &:active {
+        color: $zeta-global-color-heighlight;
+    }
+
+}
+
+.el-button--text.is-loading:before {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+
+.el-input {
+
+    .el-input__inner {
+        line-height: $input-line-height;
+        height: $input-line-height;
+        font-size: $input-font-size;
+    }
+
+    .el-input-group__append {
+        background-color: transparent !important;
+
+        .el-button {
+
+            &:hover,
+            &:focus,
+            &:active {
+                color: $zeta-global-color-heighlight;
+            }
+        }
+    }
+
+    .el-input__icon {
+        line-height: $input-line-height;
+        font-size: $input-font-size;
+    }
+}
+
+.el-select-dropdown {
+    .el-scrollbar {
+        .el-select-dropdown__list {
+            li.el-select-dropdown__item {
+                height: $input-line-height * .75;
+                line-height: $input-line-height * .75;
+                font-size: $input-font-size;
+            }
+        }
+    }
+}
+
+.el-table {
+    .el-table__header-wrapper {
+        table.el-table__header {
+            thead {
+                color: $header-color;
+            }
+        }
+    }
+    th,td {
+        padding: 10px 0;
+        font-size: 13px;
+    }
+    .cell {
+        line-height: 20px;
+    }
+}
+
+.el-dialog__title {
+    font-weight: bold;
+    font-size: 18px;
+    color: $zeta-font-color;
+}
+
+.el-dialog__headerbtn {
+    top: 35px;
+    right: 30px;
+}
+
+.el-dialog__header {
+    padding: 30px 30px 15px 30px;
+}
+
+.el-form-item__label {
+    color: $zeta-font-color;
+}
+.el-form-item__error {
+    padding-top: 0;
+    color: $zeta-global-color-red;
+}
+
+.el-dialog__body {
+    font-size: 14px;
+    color: $zeta-font-color;
+    padding: 0 30px;
+}
+
+.el-dialog__footer {
+    padding: 10px 30px 30px 30px;
+}
+
+.el-tooltip__popper:not(.is-dark) {
+
+    background-color: $zeta-global-light-grey !important;
+    color: $zeta-font-light-color;
+    border: 1px solid $zeta-font-light-color !important;
+}
+
+.el-message {
+    &.el-message--error {
+        color: $zeta-global-color-red;
+        background-color: $zeta-global-color-red-background;
+        border-color: $zeta-global-color-red;
+
+        p {
+            color: $zeta-global-color-red;
+        }
+    }
+
+    &.el-message--success {
+        color: $zeta-global-color-green;
+        background-color: $zeta-global-color-green-background;
+        border-color: $zeta-global-color-green;
+
+        p {
+            color: $zeta-global-color-green;
+        }
+    }
+}
+
+//change el-icon-error to zeta icon
+.el-icon-error:before {
+    font-family: "zeta-font" !important;
+    font-size: 20px;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: $zeta-font-color;
+
+    // &:hover{
+    //   color: $zeta-global-color;
+    // }
+    &::before {
+        font-size: inherit;
+    }
+
+    content: "\e61b";
+    color: $zeta-global-color-red;
+}
+
+.el-icon-warning:before {
+    font-family: "zeta-font" !important;
+    font-size: 20px;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: $zeta-font-color;
+
+    // &:hover{
+    //   color: $zeta-global-color;
+    // }
+    &::before {
+        font-size: inherit;
+    }
+
+    content: "\e61b";
+    color: $zeta-global-color-brown;
+}
+
+.el-icon-warning {
+    transform: rotateZ(180deg);
+}
+
+.el-icon-success:before {
+    font-family: "zeta-font" !important;
+    font-size: 20px;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: $zeta-font-color;
+
+    // &:hover{
+    //   color: $zeta-global-color;
+    // }
+    &::before {
+        font-size: inherit;
+    }
+
+    content: "\e604";
+    color: $zeta-global-color-green;
+}
+.el-message-box__content{
+  .el-icon-warning:before {
+    content: " ";
+  }
+  .el-icon-error:before {
+    content: " ";
+  }
+}
+.el-button--text.is-disabled {
+  .el-icon-star-on,
+  .el-icon-star-off {
+    color: inherit;
+  }
+}
+.el-icon-star-on,
+.el-icon-star-off {
+  &:not(.default) {
+    color: #E2B258;
+  }
+}
+.el-icon-star-off {
+  font-size: 16px;
+}
+.el-icon-star-on {
+  font-size: 18px;
+}
+.el-form-item {
+    margin-bottom: 10px;
+}
+
+.el-message-box {
+    padding: 30px;
+
+    >.el-message-box__btns,
+    >.el-message-box__header {
+        padding: 0px;
+
+        >.el-button--default {
+            color: $zeta-global-color;
+            border-color: $zeta-global-color;
+            background-color: white;
+
+            &:hover {
+                color: $zeta-global-color-heighlight;
+                border-color: $zeta-global-color-heighlight;
+            }
+        }
+
+        >.el-button--primary {
+            color: white;
+            background-color: $zeta-global-color;
+
+            &:hover {
+                color: white;
+                background-color: $zeta-global-color-heighlight;
+            }
+        }
+    }
+
+    >.el-message-box__content {
+        padding: 15px 0;
+
+        >.el-message-box__status::before {
+            content: '';
+            padding: 0px;
+        }
+
+        >.el-message-box__message {
+            padding-left: 0;
+        }
+    }
+
+    >.el-message-box__header {
+        >.el-message-box__title:before {
+            font-family: "zeta-font" !important;
+            font-size: 30px;
+            font-style: normal;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            color: $zeta-font-color;
+
+            // &:hover{
+            //   color: $zeta-global-color;
+            // }
+            &::before {
+                font-size: inherit;
+            }
+
+            content: "\e61b";
+            color: $zeta-global-color-brown;
+        }
+
+        >.el-message-box__title {
+            display: flex;
+            align-items: center;
+        }
+
+        >.el-message-box__headerbtn {
+            top: 6px;
+            right: 0;
+        }
+    }
+    &.zeta-prompt{
+        >.el-message-box__header {
+            >.el-message-box__title {
+                font-weight: bold;
+                &:before{
+                    content: none;
+                }
+            }
+        }
+        .el-message-box__btns{
+            display: flex;
+            flex-direction: row-reverse;
+            >button:nth-child(1){
+                margin-left: 10px;
+            }
+        }
+    }
+}
+
+.el-form-item.is-required:not(.is-no-asterisk)>.el-form-item__label:before {
+    content: none;
+}
+
+.el-form-item.is-required:not(.is-no-asterisk)>.el-form-item__label:after {
+    content: '*';
+    color: #f56c6c;
+    margin-right: 4px;
+}
+
+a {
+    color: $zeta-global-color;
+
+    &:hover {
+        color: $zeta-global-color-heighlight;
+    }
+}
+.el-form-item.is-error .el-input__inner, .el-form-item.is-error .el-input__inner:focus, .el-form-item.is-error .el-textarea__inner, .el-form-item.is-error .el-textarea__inner:focus {
+    border-color: $zeta-global-color-red;
+}
+
+.read-only-code-mirror {
+    .CodeMirror-cursor {
+        display: none;
+    }
+}
+
+.max-height200 {
+    max-height: 200px;
+    overflow-y: auto;
+}
+.Charts {
+    min-height: 400px;
+}
+.my-dependency-search,.my-dependency-signal-search{
+  .el-autocomplete-suggestion__list{
+    li{
+      padding: 0 10px;
+      >div{
+        display: flex;
+        align-items: center;
+        .name{
+          display: inline-block;
+          max-width: calc(100% - 80px);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+      .unknown{
+        cursor: default;
+        color: #cccccc;
+        .request-row{
+          color: #606266
+        }
+        .request{
+          cursor: pointer;
+          color: #4d8cca;
+          text-decoration: underline;
+          margin-left: 10px;
+          margin-right: 2px;
+        }
+      }
+    }
+  }
+}
+.used-capacity {
+  .el-dialog__header{
+    padding: 10px;
+  }
+  .el-dialog__body{
+    padding-bottom: 10px;
+  }
+}

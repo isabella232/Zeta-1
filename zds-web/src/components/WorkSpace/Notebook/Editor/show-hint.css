@@ -1,0 +1,11 @@
+.CodeMirror-hint-keyword:before {
+    content: "\E6E2";
+    font-family: "element-icons" !important;
+    margin-right: 5px;
+}
+
+.CodeMirror-hint-table:before {
+    content: "\E629";
+    font-family: "zeta-font" !important;
+    margin-right: 5px;
+}

@@ -1,0 +1,481 @@
+package org.apache.hive.jdbc;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLWarning;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hive.service.cli.RowSet;
+import org.apache.hive.service.cli.RowSetFactory;
+import org.apache.hive.service.cli.thrift.TCancelOperationReq;
+import org.apache.hive.service.cli.thrift.TCancelOperationResp;
+import org.apache.hive.service.cli.thrift.TCloseOperationReq;
+import org.apache.hive.service.cli.thrift.TCloseOperationResp;
+import org.apache.hive.service.cli.thrift.TExecuteStatementReq;
+import org.apache.hive.service.cli.thrift.TExecuteStatementResp;
+import org.apache.hive.service.cli.thrift.TFetchOrientation;
+import org.apache.hive.service.cli.thrift.TFetchResultsReq;
+import org.apache.hive.service.cli.thrift.TFetchResultsResp;
+import org.apache.hive.service.cli.thrift.TGetOperationStatusReq;
+import org.apache.hive.service.cli.thrift.TGetOperationStatusResp;
+import org.apache.hive.service.cli.thrift.TOperationHandle;
+import org.apache.hive.service.cli.thrift.TSessionHandle;
+import org.apache.hive.service.cli.thrift.TCLIService.Iface;
+
+
+public class ZetaHiveStatement implements Statement {
+  public static final Log LOG = LogFactory.getLog(ZetaHiveStatement.class.getName());
+  private final HiveConnection connection;
+  private Iface client;
+  private TOperationHandle stmtHandle;
+  private final TSessionHandle sessHandle;
+  Map<String, String> sessConf;
+  private int fetchSize;
+  private boolean isScrollableResultset;
+  private ResultSet resultSet;
+  private int maxRows;
+  private SQLWarning warningChain;
+  private boolean isClosed;
+  private boolean isCancelled;
+  private boolean isQueryClosed;
+  private boolean isLogBeingGenerated;
+  private boolean isExecuteStatementFailed;
+
+  private ReentrantLock transportLock = new ReentrantLock(true);
+
+  public ZetaHiveStatement(HiveConnection connection, Iface client, TSessionHandle sessHandle) {
+    this(connection, client, sessHandle, false);
+  }
+
+  public ZetaHiveStatement(HiveConnection connection, Iface client, TSessionHandle sessHandle, boolean isScrollableResultset) {
+    this.stmtHandle = null;
+    this.sessConf = new HashMap();
+    this.fetchSize = 1000;
+    this.isScrollableResultset = false;
+    this.resultSet = null;
+    this.maxRows = 0;
+    this.warningChain = null;
+    this.isClosed = false;
+    this.isCancelled = false;
+    this.isQueryClosed = false;
+    this.isLogBeingGenerated = true;
+    this.isExecuteStatementFailed = false;
+    this.connection = connection;
+    this.client = client;
+    this.sessHandle = sessHandle;
+    this.isScrollableResultset = isScrollableResultset;
+  }
+
+  public void addBatch(String sql) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  @Override
+  public void cancel() throws SQLException {
+    checkConnection("cancel");
+    if (isCancelled) {
+      return;
+    }
+
+    transportLock.lock();
+    try {
+      if (stmtHandle != null) {
+        TCancelOperationReq cancelReq = new TCancelOperationReq(stmtHandle);
+        TCancelOperationResp cancelResp = client.CancelOperation(cancelReq);
+        Utils.verifySuccessWithInfo(cancelResp.getStatus());
+      }
+    } catch (SQLException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new SQLException(e.toString(), "08S01", e);
+    } finally {
+      transportLock.unlock();
+    }
+    isCancelled = true;
+  }
+
+  public void clearBatch() throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public void clearWarnings() throws SQLException {
+    this.warningChain = null;
+  }
+
+  void closeClientOperation() throws SQLException {
+    try {
+      if (this.stmtHandle != null) {
+        TCloseOperationReq closeReq = new TCloseOperationReq(this.stmtHandle);
+        TCloseOperationResp closeResp = this.client.CloseOperation(closeReq);
+        Utils.verifySuccessWithInfo(closeResp.getStatus());
+      }
+    } catch (SQLException var3) {
+      throw var3;
+    } catch (Exception var4) {
+      throw new SQLException(var4.toString(), "08S01", var4);
+    }
+
+    this.isQueryClosed = true;
+    this.isExecuteStatementFailed = false;
+    this.stmtHandle = null;
+  }
+
+  public void close() throws SQLException {
+    if (!this.isClosed) {
+      this.closeClientOperation();
+      this.client = null;
+      this.resultSet = null;
+      this.isClosed = true;
+    }
+  }
+
+  public void closeOnCompletion() throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  @Override
+  public boolean execute(String sql) throws SQLException {
+    checkConnection("execute");
+
+    closeClientOperation();
+    initFlags();
+
+    TExecuteStatementReq execReq = new TExecuteStatementReq(sessHandle, sql);
+    /**
+     * Run asynchronously whenever possible
+     * Currently only a SQLOperation can be run asynchronously,
+     * in a background operation thread
+     * Compilation is synchronous and execution is asynchronous
+     */
+    execReq.setRunAsync(true);
+    execReq.setConfOverlay(sessConf);
+
+    transportLock.lock();
+    try {
+      TExecuteStatementResp execResp = client.ExecuteStatement(execReq);
+      Utils.verifySuccessWithInfo(execResp.getStatus());
+      stmtHandle = execResp.getOperationHandle();
+      isExecuteStatementFailed = false;
+    } catch (SQLException eS) {
+      isExecuteStatementFailed = true;
+      throw eS;
+    } catch (Exception ex) {
+      isExecuteStatementFailed = true;
+      throw new SQLException(ex.toString(), "08S01", ex);
+    } finally {
+      transportLock.unlock();
+    }
+
+    TGetOperationStatusReq statusReq = new TGetOperationStatusReq(stmtHandle);
+    boolean operationComplete = false;
+    TGetOperationStatusResp statusResp;
+
+    // Poll on the operation status, till the operation is complete
+    while (!operationComplete) {
+      try {
+        /**
+         * For an async SQLOperation, GetOperationStatus will use the long polling approach
+         * It will essentially return after the HIVE_SERVER2_LONG_POLLING_TIMEOUT (a server config) expires
+         */
+        transportLock.lock();
+        try {
+          statusResp = client.GetOperationStatus(statusReq);
+        } finally {
+          transportLock.unlock();
+        }
+        Utils.verifySuccessWithInfo(statusResp.getStatus());
+        if (statusResp.isSetOperationState()) {
+          switch (statusResp.getOperationState()) {
+            case CLOSED_STATE:
+            case FINISHED_STATE:
+              operationComplete = true;
+              break;
+            case CANCELED_STATE:
+              // 01000 -> warning
+              throw new SQLException("Query was cancelled", "01000");
+            case ERROR_STATE:
+              // Get the error details from the underlying exception
+              throw new SQLException(statusResp.getErrorMessage(),
+                      statusResp.getSqlState(), statusResp.getErrorCode());
+            case UKNOWN_STATE:
+              throw new SQLException("Unknown query", "HY000");
+            case INITIALIZED_STATE:
+            case PENDING_STATE:
+            case RUNNING_STATE:
+              break;
+          }
+        }
+      } catch (SQLException e) {
+        isLogBeingGenerated = false;
+        throw e;
+      } catch (Exception e) {
+        isLogBeingGenerated = false;
+        throw new SQLException(e.toString(), "08S01", e);
+      }
+    }
+    isLogBeingGenerated = false;
+
+    // The query should be completed by now
+    if (!stmtHandle.isHasResultSet()) {
+      return false;
+    }
+    resultSet = new HiveQueryResultSet.Builder(this).setClient(client).setSessionHandle(sessHandle)
+            .setStmtHandle(stmtHandle).setMaxRows(maxRows).setFetchSize(fetchSize)
+            .setScrollable(isScrollableResultset).setTransportLock(transportLock)
+            .build();
+    return true;
+  }
+
+  private void checkConnection(String action) throws SQLException {
+    if (this.isClosed) {
+      throw new SQLException("Can't " + action + " after statement has been closed");
+    }
+  }
+
+  private void initFlags() {
+    this.isCancelled = false;
+    this.isQueryClosed = false;
+    this.isLogBeingGenerated = true;
+    this.isExecuteStatementFailed = false;
+  }
+
+  public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public boolean execute(String sql, int[] columnIndexes) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public boolean execute(String sql, String[] columnNames) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public int[] executeBatch() throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public ResultSet executeQuery(String sql) throws SQLException {
+    if (!this.execute(sql)) {
+      throw new SQLException("The query did not generate a result set!");
+    } else {
+      return this.resultSet;
+    }
+  }
+
+  public int executeUpdate(String sql) throws SQLException {
+    this.execute(sql);
+    return 0;
+  }
+
+  public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public int executeUpdate(String sql, String[] columnNames) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public Connection getConnection() throws SQLException {
+    this.checkConnection("getConnection");
+    return this.connection;
+  }
+
+  public int getFetchDirection() throws SQLException {
+    this.checkConnection("getFetchDirection");
+    return 1000;
+  }
+
+  public int getFetchSize() throws SQLException {
+    this.checkConnection("getFetchSize");
+    return this.fetchSize;
+  }
+
+  public ResultSet getGeneratedKeys() throws SQLException {
+    throw new SQLFeatureNotSupportedException("Method not supported");
+  }
+
+  public int getMaxFieldSize() throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public int getMaxRows() throws SQLException {
+    this.checkConnection("getMaxRows");
+    return this.maxRows;
+  }
+
+  public boolean getMoreResults() throws SQLException {
+    return false;
+  }
+
+  public boolean getMoreResults(int current) throws SQLException {
+    throw new SQLFeatureNotSupportedException("Method not supported");
+  }
+
+  public int getQueryTimeout() throws SQLException {
+    this.checkConnection("getQueryTimeout");
+    return 0;
+  }
+
+  public ResultSet getResultSet() throws SQLException {
+    this.checkConnection("getResultSet");
+    return this.resultSet;
+  }
+
+  public int getResultSetConcurrency() throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public int getResultSetHoldability() throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public int getResultSetType() throws SQLException {
+    this.checkConnection("getResultSetType");
+    return 1003;
+  }
+
+  public int getUpdateCount() throws SQLException {
+    this.checkConnection("getUpdateCount");
+    return -1;
+  }
+
+  public SQLWarning getWarnings() throws SQLException {
+    this.checkConnection("getWarnings");
+    return this.warningChain;
+  }
+
+  public boolean isClosed() throws SQLException {
+    return this.isClosed;
+  }
+
+  public boolean isCloseOnCompletion() throws SQLException {
+    return false;
+  }
+
+  public boolean isPoolable() throws SQLException {
+    return false;
+  }
+
+  public void setCursorName(String name) throws SQLException {
+    throw new SQLFeatureNotSupportedException("Method not supported");
+  }
+
+  public void setEscapeProcessing(boolean enable) throws SQLException {
+    if (enable) {
+      throw new SQLException("Method not supported");
+    }
+  }
+
+  public void setFetchDirection(int direction) throws SQLException {
+    this.checkConnection("setFetchDirection");
+    if (direction != 1000) {
+      throw new SQLException("Not supported direction " + direction);
+    }
+  }
+
+  public void setFetchSize(int rows) throws SQLException {
+    this.checkConnection("setFetchSize");
+    this.fetchSize = rows;
+  }
+
+  public void setMaxFieldSize(int max) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public void setMaxRows(int max) throws SQLException {
+    this.checkConnection("setMaxRows");
+    if (max < 0) {
+      throw new SQLException("max must be >= 0");
+    } else {
+      this.maxRows = max;
+    }
+  }
+
+  public void setPoolable(boolean poolable) throws SQLException {
+    throw new SQLException("Method not supported");
+  }
+
+  public void setQueryTimeout(int seconds) throws SQLException {
+    if (seconds != 0) {
+      throw new SQLException("Query timeout seconds must be 0");
+    }
+  }
+
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    return false;
+  }
+
+  public <T> T unwrap(Class<T> iface) throws SQLException {
+    throw new SQLException("Cannot unwrap to " + iface);
+  }
+
+  public boolean hasMoreLogs() {
+    return this.isLogBeingGenerated;
+  }
+
+  public List<String> getQueryLog() throws SQLException, ClosedOrCancelledStatementException {
+    return this.getQueryLog(true, this.fetchSize);
+  }
+
+  public List<String> getQueryLog(boolean incremental, int fetchSize) throws SQLException, ClosedOrCancelledStatementException {
+    this.checkConnection("getQueryLog");
+    if (this.isCancelled) {
+      throw new ClosedOrCancelledStatementException("Method getQueryLog() failed. The statement has been closed or cancelled.");
+    } else {
+      List<String> logs = new ArrayList();
+      TFetchResultsResp tFetchResultsResp = null;
+
+      try {
+        if (this.stmtHandle == null) {
+          if (this.isQueryClosed) {
+            throw new ClosedOrCancelledStatementException("Method getQueryLog() failed. The statement has been closed or cancelled.");
+          }
+
+          if (this.isExecuteStatementFailed) {
+            throw new SQLException("Method getQueryLog() failed. Because the stmtHandle in HiveStatement is null and the statement execution might fail.");
+          }
+
+          return logs;
+        }
+
+        TFetchResultsReq tFetchResultsReq = new TFetchResultsReq(this.stmtHandle, this.getFetchOrientation(incremental), (long) fetchSize);
+        tFetchResultsReq.setFetchType((short) 1);
+        tFetchResultsResp = this.client.FetchResults(tFetchResultsReq);
+        Utils.verifySuccessWithInfo(tFetchResultsResp.getStatus());
+      } catch (SQLException var8) {
+        throw var8;
+      } catch (Exception var9) {
+        throw new SQLException("Error when getting query log: " + var9, var9);
+      }
+
+      RowSet rowSet = RowSetFactory.create(tFetchResultsResp.getResults(), this.connection.getProtocol());
+      Iterator i$ = rowSet.iterator();
+
+      while (i$.hasNext()) {
+        Object[] row = (Object[]) i$.next();
+        logs.add(String.valueOf(row[0]));
+      }
+
+      return logs;
+    }
+  }
+
+  private TFetchOrientation getFetchOrientation(boolean incremental) {
+    return incremental ? TFetchOrientation.FETCH_NEXT : TFetchOrientation.FETCH_FIRST;
+  }
+}

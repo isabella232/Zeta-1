@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="shortcut icon" href="/zeta/favicon.ico?v=2.0">
+    <% if (htmlWebpackPlugin.options.oss) { %>
+    <script src="/auth-client-front/dss-auth-client.js"></script>
+    <% } %>
+    <title>Zeta</title>
+    <style>
+      #loading{
+        text-align: center;
+      }
+      #loadingImg{
+        width: 70px;
+        animation:rotating 3s linear infinite
+      }
+      @keyframes rotating{
+        from{transform:rotate(0)}
+        to{transform:rotate(360deg)}
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but zds-web doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app" style="display: none"></div>
+    <div id=loading>Init...
+      <br>
+      <img id="loadingImg" src="./img/icons/load-d.png">
+    </div>
+    <!-- built files will be auto injected -->
+  </body>
+</html>

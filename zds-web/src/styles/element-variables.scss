@@ -1,0 +1,9 @@
+@import "./global.scss";
+// $--color-primary: rgb(51, 110, 123);
+$--color-primary:$zeta-global-color;
+
+// $--button-hover-tint-percent:-20%;
+
+$--font-path: '~element-ui/lib/theme-chalk/fonts';
+$--button-disabled-fill:$zeta-global-color-disable;
+@import "~element-ui/packages/theme-chalk/src/index";

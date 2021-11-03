@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es2015",
+    "module": "esNext",
+    "strict": true,
+    "jsx": "preserve",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "lib": ["dom", "es2015", "es2017", "es2018.promise"],
+    /* TS 2.7 fails to check prop initialization, see https://github.com/vuejs/vue-cli/issues/834 */
+    "strictPropertyInitialization": false,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "types": ["node", "mocha", "chai"],
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "noImplicitAny": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "tests/**/*.ts"],
+  "exclude": ["node_modules"]
+}

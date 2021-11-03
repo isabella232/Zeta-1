@@ -1,0 +1,50 @@
+export enum OP {
+  /* OPs from server */
+  NB_CODE_INVALID_NOTEBOOK_STATUS =    'NB_CODE_INVALID_NOTEBOOK_STATUS',
+  INTERNAL_ERROR =                     'INTERNAL_ERROR',
+  NB_CODE_EXECUTE_ERROR =              'NB_CODE_EXECUTE_ERROR',
+  NB_CODE_STATEMENT_SUCCESS =          'NB_CODE_STATEMENT_SUCCESS',
+  NB_CODE_JOB_READY =                  'NB_CODE_JOB_READY',
+  NB_CODE_JOB_DONE =                   'NB_CODE_JOB_DONE',
+  NB_CODE_PREPROCESSED =               'NB_CODE_PREPROCESSED',
+  NB_CODE_STATEMENT_PROGRESS =         'NB_CODE_STATEMENT_PROGRESS',
+  NB_CODE_SESSION_EXPIRED =            'NB_CODE_SESSION_EXPIRED',
+  NB_CODE_STATEMENT_START =            'NB_CODE_STATEMENT_START',
+  NB_CODE_DUMP_DONE = 			 	 'NB_CODE_DUMP_DONE',
+  NB_VAR_REFRESH = 'NB_VAR_REFRESH',
+
+  CONNECTION_ERROR = 					 'CONNECTION_ERROR',
+  CONNECTION_SUCCESS = 				 'CONNECTION_SUCCESS',
+  CONNECTION_ABORT =                   'CONNECTION_ABORT',
+  CONNECTION_PROGRESS =                'CONNECTION_PROGRESS',
+  DISCONNECTION_SUCCESS = 			 'DISCONNECTION_SUCCESS',
+  DISCONNECTION_ERROR = 				 'DISCONNECTION_ERROR',
+  CANCEL_SUCCESS = 					 'CANCEL_SUCCESS',
+  CANCEL_ERROR = 						 'CANCEL_ERROR',
+  GREETING = 			                 'GREETING',
+  RECOVER_TRIED = 'RECOVER_TRIED',
+  SESSION_ACTIVE = 'SESSION_ACTIVE',
+
+
+  /* OPs to server */
+  NB_CODE_JOB_SUBMIT = 'NB_CODE_SUBMIT',
+  NB_CODE_JOB_DUMP = 'NB_CODE_DUMP',
+  NB_CODE_JOB_CANCEL = 'NB_JOB_CANCEL',
+  NB_CONNECT = 'NB_CONNECT',
+  NB_DISCONNECT = 'NB_DISCONNECT',
+  ZETA_SERVER_REQ_ID = 'ZETA_SERVER_REQ_ID',
+  NB_RECOVER = 'NB_RECOVER',
+  ACTIVE = 'ACTIVE',
+}
+export const OPEndpoints: { [K: string]: string } = {
+  [OP.NB_CONNECT]: '/wsapp/code/connect',
+  [OP.NB_DISCONNECT]: '/wsapp/code/disconnect',
+  [OP.NB_CODE_JOB_SUBMIT]: '/wsapp/code/execute',
+  [OP.NB_CODE_JOB_DUMP]: '/wsapp/code/dump',
+  [OP.NB_CODE_JOB_CANCEL]: '/wsapp/code/cancel',
+  [OP.ZETA_SERVER_REQ_ID]: '/wsapp/id',
+  [OP.NB_RECOVER]: '/wsapp/code/recover',
+  [OP.ACTIVE]: '/wsapp/active',
+};
+
+export const SubscribeEndPoints = [ '/user/queue/square' ];

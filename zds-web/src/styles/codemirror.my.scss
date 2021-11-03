@@ -1,0 +1,74 @@
+/* Expand layout height to fullscreen but not overflow vertically */
+html, body, .application, .application--wrap, main { height:100%; }
+
+/* Force container to align with baseline, 
+   otherwise it defaults to vertically center align */
+
+.content .container {
+  align-items: baseline !important;
+}
+
+/* BASICS */
+
+.CodeMirror {
+  font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;;
+  height: 100% !important;
+}
+
+.CodeMirror-linenumber {
+  padding: 0 9px 0 5px;
+}
+
+/* CURSOR */
+
+.CodeMirror-cursor {
+  /* Make cursor shorter */
+  height: 1.3em !important;
+  margin-top: 0.15em !important;
+}
+
+
+/* Default styles for common addons */
+
+div.CodeMirror span.CodeMirror-matchingbracket {
+    color: #0b0; 
+    border-color: transparent;
+    box-shadow: 0 0 0 1px #aaa;
+  }
+
+  .cm-matchhighlight {
+    background-color: rgba(rgb(148, 114, 243), 0.15);
+    box-shadow: 0 0 1px rgba(#000, 0.5);
+  }
+  
+.CodeMirror-selection-highlight-scrollbar {background-color: rgba(rgb(148, 114, 243), 0.8)}
+
+/* Statement at cursor */
+.highlighted-statement {
+  background-color:rgba(lightgrey, 0.1);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.5);
+  /* Set abosulute to mimic background */ 
+  position: absolute;
+  width: 100%;
+}
+
+.CodeMirror-linewidget {
+  /* cancel defaut padding of 0.4px, so that when statement gets highlighted
+   * line height remains constant
+   */ 
+  padding: 0;
+  /* IMPORTANT: if not set z-index to 0, 
+   * either text above or below current cursor get opaque masked.
+   */
+  z-index: 0;
+}
+
+/* Selected statement gutter */
+.stmt-curtain {
+  position: relative;
+  border-right: 1px solid black;
+  right: -5px;
+}
+
+/* MUST PUT AT THE BOTTOM to make sure rules being overwritten */
+@import '../../node_modules/codemirror/lib/codemirror.css';

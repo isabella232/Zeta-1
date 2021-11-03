@@ -1,0 +1,113 @@
+@import './global.scss';
+
+$hercules: #d88045;
+$hermes: #e2b258;
+$apollo: #569ce1;
+$ares: #d85945;
+$mozart: #9a6197;
+$hopper: #608d75;
+$kylin: #965d31;
+$rheos: #4375a0;
+
+i.platform-icon {
+  @mixin pIcon($color, $content) {
+    color: $color;
+    padding: 2px 2px;
+    font-size: 10px;
+    border: 1px solid $color;
+    border-radius: 3px;
+    font-family: 'ArialMT', 'Arial';
+    // font-weight: 800;
+    font-style: normal;
+    margin: 0 2px;
+    white-space: nowrap;
+
+    &::after {
+      content: $content;
+    }
+  }
+  &.hercules {
+    @include pIcon($hercules, 'Hercules');
+  }
+
+  &.apollo {
+    @include pIcon($apollo, 'Apollo');
+  }
+
+  &.ares {
+    @include pIcon($ares, 'Ares');
+  }
+
+  &.mozart {
+    @include pIcon($mozart, 'Mozart');
+  }
+  &.numozart {
+    @include pIcon($mozart, 'Mozart');
+  }
+  &.apolloreno,
+  &.apollo_rno {
+    @include pIcon($apollo, 'Apollo RNO');
+  }
+
+  &.hopper {
+    @include pIcon($hopper, 'Hopper');
+    display: none;
+  }
+
+  &.hercules_sub {
+    @include pIcon($hercules, 'Hercules Sub');
+  }
+
+  &.hermes {
+    @include pIcon($hermes, 'Hermes');
+  }
+
+  &.kylin-rno,
+  &.kylin-rno-qa,
+  &.kylin {
+    @include pIcon($kylin, 'Kylin');
+  }
+
+  &.rheos {
+    @include pIcon($rheos, 'Rheos');
+  }
+}
+
+i.type-icon {
+  @mixin pIcon($color, $content) {
+    color: $color;
+    padding: 2px 2px;
+    font-size: 10px;
+    border: 1px solid $color;
+    border-radius: 3px;
+    font-family: 'ArialMT', 'Arial';
+    // font-weight: 800;
+    font-style: normal;
+    margin: 0 2px;
+    white-space: nowrap;
+
+    &::after {
+      content: $content;
+    }
+  }
+
+  &.table {
+    @include pIcon(#cacbcf, 'Table');
+  }
+
+  &.view {
+    @include pIcon(#cacbcf, 'View');
+  }
+
+  &.tableau {
+    @include pIcon(#cacbcf, 'Tableau');
+  }
+
+  &.udf {
+    @include pIcon(#cacbcf, 'UDF');
+  }
+
+  &.query {
+    @include pIcon(#cacbcf, 'Notebook');
+  }
+}
