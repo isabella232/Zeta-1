@@ -1,13 +1,20 @@
-# zeta-dev-suite
-Zeta open source version, castrated all the ebay internal related feature
+# What is Zeta
+Zeta is Unified data engineering & analytics platform, across data engineering & analytics lifecycle from data discovery, code development, unit testing, performance tuning, deployment to data visualization, machine learning.
 
-## zds-server
+Will benefit users’ interaction with Bigata Platform, including
 
-Detail: [README](zds-server/README.md)
+* Data engineers who develop new data pipeline or
+* Data analysts who explore large datasets or do ad-hoc analysis
+* Data Science who work on feature engineering for a ML model.
 
-## zds-web
+![image](https://user-images.githubusercontent.com/8375439/140042164-2b1fff33-7747-4c33-aad9-3ed5c1503919.png)
 
-Detail: [README](zds-web/README.md)# open-zeta
+
+![image](https://user-images.githubusercontent.com/8375439/140043077-60edf29e-356d-44e6-bc08-94db5ed2f8cf.png)
+
+## How it is being used by eBay
+More than 3000 active users including product manager, data analysts , data engineerings are using Zeta to do their daily work. 
+https://tech.ebayinc.com/engineering/unpacking-ebays-new-sql-authoring-tool-for-data-creation-and-management/
 
 ## License
 
