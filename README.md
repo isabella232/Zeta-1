@@ -1,16 +1,9 @@
 # What is Zeta
-Zeta is Unified data engineering & analytics platform, across data engineering & analytics lifecycle from data discovery, code development, unit testing, performance tuning, deployment to data visualization, machine learning.
+Zeta is a unified data discovery, data analytics platform that empowers users to discover, understand, analyze data in data lake and build customized analytics pipelines. 
 
-Will benefit users’ interaction with Bigata Platform, including
-
-* Data engineers who develop new data pipeline or
-* Data analysts who explore large datasets or do ad-hoc analysis
-* Data Science who work on feature engineering for a ML model.
-
-![image](https://user-images.githubusercontent.com/8375439/140042164-2b1fff33-7747-4c33-aad9-3ed5c1503919.png)
+![image](https://user-images.githubusercontent.com/8375439/144576244-ec589c54-0ada-4189-b85b-e408a64d77cb.png)
 
 
-![image](https://user-images.githubusercontent.com/8375439/140043077-60edf29e-356d-44e6-bc08-94db5ed2f8cf.png)
 
 ## How it is being used by eBay
 More than 3000 active users including product manager, data analysts , data engineerings are using Zeta to do their daily work. 
